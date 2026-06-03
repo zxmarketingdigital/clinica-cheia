@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel da Clínica</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ===== Reset & base ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --amber:        #D97706;
+      --amber-light:  #F59E0B;
+      --amber-bright: #FCD34D;
+      --amber-dark:   #92400E;
+      --bg:           #0D0D0D;
+      --bg-alt:       #0A0A0A;
+      --surface:      #1A1A1A;
+      --surface2:     #222222;
+      --border:       #2A2A2A;
+      --border-light: #333333;
+      --text:         #E2E8F0;
+      --text-sec:     #9CA3AF;
+      --text-muted:   #6B7280;
+      --green:        #4ADE80;
+      --red:          #EF4444;
+      --indigo:       #818CF8;
+    }
+
+    html, body {
+      min-height: 100vh;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* subtle amber grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(217,119,6,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(217,119,6,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      z-index: 0;
+    }
+
+    /* ===== Layout ===== */
+    #app { position: relative; z-index: 1; }
+
+    /* ===== Login ===== */
+    #login-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 0 60px rgba(217,119,6,0.08);
+    }
+
+    .login-logo {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--amber);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .login-card h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .login-card p {
+      color: var(--text-sec);
+      font-size: 0.88rem;
+      margin-bottom: 32px;
+    }
+
+    /* ===== Forms ===== */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-sec);
+      margin-bottom: 6px;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 2px rgba(217,119,6,0.15);
+    }
+    .field input::placeholder { color: var(--text-muted); }
+
+    /* ===== Buttons ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 0.88rem;
+      padding: 10px 18px;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .btn:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 2px;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--amber), var(--amber-light));
+      color: #000;
+      font-weight: 800;
+    }
+    .btn-primary.full { width: 100%; padding: 14px 18px; font-size: 0.95rem; }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border-light);
+      color: var(--text-sec);
+    }
+    .btn-ghost:hover { border-color: var(--amber); color: var(--text); }
+
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; }
+
+    /* status action buttons */
+    .btn-confirmado { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
+    .btn-realizado  { background: rgba(217,119,6,0.15);  border: 1px solid rgba(217,119,6,0.3);  color: var(--amber-light); }
+    .btn-faltou     { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.3);  color: var(--red); }
+    .btn-cancelar   { background: rgba(107,114,128,0.15);border: 1px solid var(--border-light);  color: var(--text-muted); }
+
+    .btn-confirmado:hover { background: rgba(74,222,128,0.25); }
+    .btn-realizado:hover  { background: rgba(217,119,6,0.25); }
+    .btn-faltou:hover     { background: rgba(239,68,68,0.22); }
+    .btn-cancelar:hover   { background: rgba(107,114,128,0.25); color: var(--text-sec); }
+
+    /* ===== Main shell ===== */
+    #main-screen { display: none; min-height: 100vh; flex-direction: column; }
+    #main-screen.visible { display: flex; }
+
+    header {
+      background: var(--bg-alt);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-brand {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--amber);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .header-clinica {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-left: 12px;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 0; }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .user-email {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    /* ===== Nav tabs ===== */
+    nav {
+      background: var(--bg-alt);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+    }
+
+    .tab {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-sec);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 12px 16px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active {
+      color: var(--amber);
+      border-bottom-color: var(--amber);
+    }
+    .tab:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: -2px;
+    }
+
+    /* ===== Content area ===== */
+    main {
+      flex: 1;
+      padding: 28px 24px;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ===== Section header ===== */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .section-title {
+      font-size: 1.2rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .section-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-left: 8px;
+    }
+
+    /* ===== Date nav ===== */
+    .date-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .date-display {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      color: var(--text);
+      min-width: 110px;
+      text-align: center;
+    }
+
+    /* ===== Cards / tables ===== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 10px;
+      transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    }
+    .card:hover {
+      border-color: rgba(217,119,6,0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(217,119,6,0.08);
+    }
+
+    /* Agenda row */
+    .agenda-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .agenda-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--amber);
+      min-width: 54px;
+    }
+
+    .agenda-info { flex: 1; min-width: 160px; }
+    .agenda-nome { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+    .agenda-proc { font-size: 0.82rem; color: var(--text-sec); margin-top: 2px; }
+
+    .agenda-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    /* Status badge */
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 100px;
+    }
+    .badge-agendado   { background: rgba(129,140,248,0.15); color: var(--indigo); border: 1px solid rgba(129,140,248,0.3); }
+    .badge-confirmado { background: rgba(74,222,128,0.12);  color: var(--green);  border: 1px solid rgba(74,222,128,0.3); }
+    .badge-realizado  { background: rgba(217,119,6,0.12);   color: var(--amber-light); border: 1px solid rgba(217,119,6,0.3); }
+    .badge-cancelado  { background: rgba(107,114,128,0.12); color: var(--text-muted); border: 1px solid var(--border); }
+    .badge-faltou     { background: rgba(239,68,68,0.12);   color: var(--red);    border: 1px solid rgba(239,68,68,0.3); }
+
+    /* ===== Search bar ===== */
+    .search-wrap { margin-bottom: 16px; }
+    .search-wrap input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border-light);
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .search-wrap input:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 2px rgba(217,119,6,0.15);
+    }
+    .search-wrap input::placeholder { color: var(--text-muted); }
+
+    /* ===== List items ===== */
+    .list-item {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      transition: border-color 0.2s;
+    }
+    .list-item:hover { border-color: rgba(217,119,6,0.3); }
+
+    .list-item-title { font-weight: 700; color: var(--text); font-size: 0.92rem; }
+    .list-item-sub   { font-size: 0.8rem; color: var(--text-sec); margin-top: 2px; }
+
+    .list-item-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+
+    /* ===== Inline edit ===== */
+    .inline-edit { display: flex; align-items: center; gap: 8px; }
+    .inline-edit input[type="number"] {
+      width: 80px;
+      background: var(--surface2);
+      border: 1px solid var(--border-light);
+      border-radius: 8px;
+      padding: 5px 10px;
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      text-align: right;
+      outline: none;
+    }
+    .inline-edit input[type="number"]:focus {
+      border-color: var(--amber);
+      box-shadow: 0 0 0 2px rgba(217,119,6,0.15);
+    }
+    .inline-edit label { font-size: 0.78rem; color: var(--text-muted); }
+
+    /* ===== Empty state ===== */
+    .empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .empty strong { display: block; color: var(--text-sec); margin-bottom: 6px; font-size: 1rem; }
+
+    /* ===== Error / success toast ===== */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 100;
+      max-width: 360px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    #toast.visible { opacity: 1; transform: translateY(0); }
+    #toast.error   { background: rgba(239,68,68,0.18);  border: 1px solid rgba(239,68,68,0.4);  color: var(--red); }
+    #toast.success { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.4); color: var(--green); }
+
+    /* ===== Loading spinner ===== */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border-light);
+      border-top-color: var(--amber);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      padding: 24px 0;
+    }
+
+    /* ===== Modal ===== */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop.hidden { display: none; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 24px;
+      padding: 36px 32px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 0 80px rgba(217,119,6,0.15);
+    }
+
+    .modal h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; color: var(--text); }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 24px;
+      justify-content: flex-end;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 600px) {
+      main { padding: 18px 14px; }
+      header { padding: 0 14px; }
+      nav { padding: 0 8px; }
+      .login-card { padding: 32px 24px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Login screen -->
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-logo">Clínica Cheia</div>
+      <h1>Painel da Clínica</h1>
+      <p>Acesse com seu e-mail e senha para gerenciar a agenda.</p>
+      <form id="login-form">
+        <div class="field">
+          <label for="login-email">E-mail</label>
+          <input type="email" id="login-email" placeholder="dona@clinica.com" required autocomplete="email" />
+        </div>
+        <div class="field">
+          <label for="login-senha">Senha</label>
+          <input type="password" id="login-senha" placeholder="••••••••" required autocomplete="current-password" />
+        </div>
+        <div id="login-error" style="color:var(--red);font-size:0.82rem;margin-bottom:12px;display:none;"></div>
+        <button type="submit" class="btn btn-primary full" id="login-btn">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="main-screen">
+    <header>
+      <div class="header-left">
+        <span class="header-brand">Clínica Cheia</span>
+        <span class="header-clinica" id="header-clinica-nome"></span>
+      </div>
+      <div class="header-right">
+        <span class="user-email" id="header-email"></span>
+        <button class="btn btn-ghost btn-sm" id="logout-btn">Sair</button>
+      </div>
+    </header>
+
+    <nav id="tabs" role="tablist">
+      <button class="tab active" data-tab="agenda" role="tab" aria-selected="true">Agenda do Dia</button>
+      <button class="tab" data-tab="clientes" role="tab" aria-selected="false">Clientes</button>
+      <button class="tab" data-tab="procedimentos" role="tab" aria-selected="false">Procedimentos</button>
+      <button class="tab" data-tab="espera" role="tab" aria-selected="false">Lista de Espera</button>
+      <button class="tab" data-tab="mensagens" role="tab" aria-selected="false">Mensagens</button>
+    </nav>
+
+    <main>
+      <!-- AGENDA DO DIA -->
+      <div class="screen active" id="screen-agenda">
+        <div class="section-header">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="section-title">Agenda do Dia</span>
+            <span class="section-sub" id="agenda-count"></span>
+          </div>
+          <div class="date-nav">
+            <button class="btn btn-ghost btn-sm" id="agenda-prev" aria-label="Dia anterior">←</button>
+            <span class="date-display" id="agenda-date"></span>
+            <button class="btn btn-ghost btn-sm" id="agenda-next" aria-label="Próximo dia">→</button>
+            <button class="btn btn-ghost btn-sm" id="agenda-hoje">Hoje</button>
+          </div>
+        </div>
+        <div id="agenda-list"></div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div class="screen" id="screen-clientes">
+        <div class="section-header">
+          <span class="section-title">Clientes</span>
+          <button class="btn btn-primary btn-sm" id="btn-novo-cliente">+ Novo Cliente</button>
+        </div>
+        <div class="search-wrap">
+          <input type="search" id="clientes-busca" placeholder="Buscar por nome ou telefone…" aria-label="Buscar clientes" />
+        </div>
+        <div id="clientes-list"></div>
+      </div>
+
+      <!-- PROCEDIMENTOS -->
+      <div class="screen" id="screen-procedimentos">
+        <div class="section-header">
+          <span class="section-title">Procedimentos</span>
+        </div>
+        <div id="procedimentos-list"></div>
+      </div>
+
+      <!-- LISTA DE ESPERA -->
+      <div class="screen" id="screen-espera">
+        <div class="section-header">
+          <span class="section-title">Lista de Espera</span>
+          <span class="section-sub" id="espera-count"></span>
+        </div>
+        <div id="espera-list"></div>
+      </div>
+
+      <!-- MENSAGENS -->
+      <div class="screen" id="screen-mensagens">
+        <div class="section-header">
+          <span class="section-title">Mensagens Recentes</span>
+          <span class="section-sub">últimas 60</span>
+        </div>
+        <div id="mensagens-list"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal: novo cliente -->
+  <div class="modal-backdrop hidden" id="modal-cliente" role="dialog" aria-modal="true" aria-labelledby="modal-cliente-titulo">
+    <div class="modal">
+      <h2 id="modal-cliente-titulo">Novo Cliente</h2>
+      <form id="form-cliente">
+        <div class="field">
+          <label for="c-nome">Nome completo</label>
+          <input type="text" id="c-nome" placeholder="Ana Paula Silva" required />
+        </div>
+        <div class="field">
+          <label for="c-telefone">Telefone (E.164)</label>
+          <input type="tel" id="c-telefone" placeholder="+5511999990000" required />
+        </div>
+        <div id="modal-cliente-error" style="color:var(--red);font-size:0.82rem;margin-top:-4px;margin-bottom:8px;display:none;"></div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="btn-cancelar-cliente">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-salvar-cliente">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" role="alert" aria-live="assertive"></div>
+
+<script src="config.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
