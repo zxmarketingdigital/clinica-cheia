@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    name: typecheck · test · dry-run
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck src
+        run: pnpm exec tsc -p tsconfig.json --noEmit
+
+      - name: Typecheck tests
+        run: pnpm exec tsc -p tsconfig.test.json --noEmit
+
+      - name: Run tests
+        run: pnpm vitest run
+
+      - name: Wrangler dry-run deploy
+        run: pnpm exec wrangler deploy --dry-run
