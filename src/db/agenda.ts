@@ -1,7 +1,7 @@
 import type { Agendamento, Cliente, Procedimento } from "./types";
 import { cadenciaVencida } from "../lib/cadencia";
 import type { CadenciaVencida } from "../lib/cadencia";
-import { janelaDiaAnterior } from "../lib/tempo";
+import { janelaDiaAnterior, paraUTC } from "../lib/tempo";
 
 export class Agenda {
   constructor(private db: any) {}
@@ -40,9 +40,10 @@ export class Agenda {
     procedimento_id: string | null,
     inicio: string
   ): Promise<Agendamento> {
+    const inicioUTC = paraUTC(inicio);
     const { data, error } = await this.db
       .from("agendamentos")
-      .insert({ cliente_id, procedimento_id, inicio })
+      .insert({ cliente_id, procedimento_id, inicio: inicioUTC })
       .select()
       .single();
     if (error) throw error;
@@ -102,12 +103,13 @@ export class Agenda {
    * (.in().lt()) é frágil. A lógica de negócio do agente é coberta em
    * tests/resgate.test.ts mockando a própria Agenda.
    */
-  async faltasRecentes(agoraISO: string) {
+  async faltasRecentes(desdeISO: string, ateISO: string) {
     const { data, error } = await this.db
       .from("agendamentos")
       .select("id, inicio, status, clientes(nome,telefone)")
       .in("status", ["agendado", "confirmado"])
-      .lt("inicio", agoraISO);
+      .gte("inicio", desdeISO)
+      .lt("inicio", ateISO);
     if (error) throw error;
     return (data ?? []).map((r: any) => ({
       id: r.id,
@@ -202,6 +204,42 @@ export class Agenda {
       .eq("direcao", "out")
       .gte("criado_em", desde)
       .ilike("corpo", `%${procedimentoNome}%`)
+      .limit(1);
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  }
+
+  /**
+   * Dedup reativador: retorna true se já enviou mensagem de reativação para
+   * esse telefone nos últimos 90 dias (mesma janela de inatividade).
+   */
+  async jaEnviouReativacao(telefone: string): Promise<boolean> {
+    const desde = new Date(Date.now() - 90 * 86400000).toISOString();
+    const { data, error } = await this.db
+      .from("mensagens")
+      .select("id")
+      .eq("telefone", telefone)
+      .eq("agente", "reativador")
+      .eq("direcao", "out")
+      .gte("criado_em", desde)
+      .limit(1);
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  }
+
+  /**
+   * Dedup avaliação Google: retorna true se já pediu avaliação para esse
+   * telefone nos últimos 3 dias (evita spam imediato em reexecuções do cron).
+   */
+  async jaPediuAvaliacao(telefone: string): Promise<boolean> {
+    const desde = new Date(Date.now() - 3 * 86400000).toISOString();
+    const { data, error } = await this.db
+      .from("mensagens")
+      .select("id")
+      .eq("telefone", telefone)
+      .eq("agente", "avaliacao-google")
+      .eq("direcao", "out")
+      .gte("criado_em", desde)
       .limit(1);
     if (error) throw error;
     return (data ?? []).length > 0;

@@ -17,6 +17,8 @@ export const niche = {
       `Oi ${v.nome}! Estamos com saudade 💕 Preparamos uma condição especial pra você voltar. Quer saber?`,
     pedidoAvaliacao: (v: { nome: string; link: string }) =>
       `${v.nome}, foi um prazer te atender! 🌟 Se puder deixar uma avaliação rápida ajuda demais: ${v.link}`,
+    convidarVaga: (v: { nome: string }) =>
+      `Oi ${v.nome}! 🎉 Abriu uma vaga na agenda. Quer garantir? Me responde que já reservo pra você!`,
   },
 };
 export type Niche = typeof niche;

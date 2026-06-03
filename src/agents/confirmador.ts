@@ -11,9 +11,13 @@ export async function runConfirmador(ctx: AgenteCtx): Promise<void> {
   const { de, ate } = janelaDiaSeguinte(ctx.agora);
   const ags = await ctx.agenda.agendamentosParaConfirmar(de, ate);
   for (const a of ags) {
-    const cli = await ctx.agenda.clientePorId(a.cliente_id);
-    const texto = niche.templates.confirmacao({ nome: cli.nome, quando: formatarQuando(a.inicio) });
-    await ctx.wa.send(cli.telefone, texto);
-    await ctx.agenda.logMensagem(cli.telefone, "out", texto, "confirmador");
+    try {
+      const cli = await ctx.agenda.clientePorId(a.cliente_id);
+      const texto = niche.templates.confirmacao({ nome: cli.nome, quando: formatarQuando(a.inicio) });
+      await ctx.wa.send(cli.telefone, texto);
+      await ctx.agenda.logMensagem(cli.telefone, "out", texto, "confirmador");
+    } catch (err) {
+      console.error(`[confirmador] erro ao processar agendamento ${a.id}:`, err);
+    }
   }
 }

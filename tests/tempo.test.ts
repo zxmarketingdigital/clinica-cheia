@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import { janelaDiaSeguinte, janelaDiaAnterior, formatarQuando } from "../src/lib/tempo";
+import { janelaDiaSeguinte, janelaDiaAnterior, formatarQuando, paraUTC } from "../src/lib/tempo";
 
 it("janelaDiaSeguinte cobre o dia seguinte em BRT", () => {
   const { de, ate } = janelaDiaSeguinte(new Date("2026-06-03T12:00:00Z"));
@@ -19,4 +19,13 @@ it("janelaDiaAnterior cobre o dia anterior em BRT", () => {
   // 02/06 00:00 BRT = 02/06 03:00 UTC ; 02/06 23:59:59.999 BRT = 03/06 02:59:59.999 UTC
   expect(de).toBe("2026-06-02T03:00:00.000Z");
   expect(ate).toBe("2026-06-03T02:59:59.999Z");
+});
+
+// FIX UTC normalização — paraUTC converte offset local para UTC puro
+it("paraUTC normaliza ISO com offset -03:00 para UTC Z", () => {
+  expect(paraUTC("2026-06-10T14:00:00-03:00")).toBe("2026-06-10T17:00:00.000Z");
+});
+
+it("paraUTC mantém ISO UTC já correto inalterado (exceto millis)", () => {
+  expect(paraUTC("2026-06-10T17:00:00.000Z")).toBe("2026-06-10T17:00:00.000Z");
 });

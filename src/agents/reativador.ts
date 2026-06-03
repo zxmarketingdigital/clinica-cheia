@@ -12,15 +12,25 @@ export async function runReativador(ctx: ReativadorCtx): Promise<void> {
 
   const inativos = await ctx.agenda.inativosDesde(corte);
   for (const i of inativos) {
-    const texto = niche.templates.reativacao({ nome: i.cliente.nome });
-    await ctx.wa.send(i.cliente.telefone, texto);
-    await ctx.agenda.logMensagem(i.cliente.telefone, "out", texto, "reativador");
+    try {
+      if (await ctx.agenda.jaEnviouReativacao(i.cliente.telefone)) continue;
+      const texto = niche.templates.reativacao({ nome: i.cliente.nome });
+      await ctx.wa.send(i.cliente.telefone, texto);
+      await ctx.agenda.logMensagem(i.cliente.telefone, "out", texto, "reativador");
+    } catch (err) {
+      console.error(`[reativador] erro ao processar inativo ${i.cliente.telefone}:`, err);
+    }
   }
 
   const ontem = await ctx.agenda.realizadosOntem(ctx.agora.toISOString());
   for (const o of ontem) {
-    const texto = niche.templates.pedidoAvaliacao({ nome: o.cliente.nome, link: ctx.reviewLink });
-    await ctx.wa.send(o.cliente.telefone, texto);
-    await ctx.agenda.logMensagem(o.cliente.telefone, "out", texto, "reativador");
+    try {
+      if (await ctx.agenda.jaPediuAvaliacao(o.cliente.telefone)) continue;
+      const texto = niche.templates.pedidoAvaliacao({ nome: o.cliente.nome, link: ctx.reviewLink });
+      await ctx.wa.send(o.cliente.telefone, texto);
+      await ctx.agenda.logMensagem(o.cliente.telefone, "out", texto, "avaliacao-google");
+    } catch (err) {
+      console.error(`[reativador] erro ao pedir avaliação ${o.cliente.telefone}:`, err);
+    }
   }
 }

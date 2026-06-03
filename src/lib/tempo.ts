@@ -74,6 +74,15 @@ export function janelaDiaAnterior(agora: Date): { de: string; ate: string } {
 }
 
 /**
+ * Normaliza uma string ISO (potencialmente com offset, ex: "-03:00") para
+ * UTC puro ("...Z"). Garante que comparações de string ISO sejam consistentes.
+ * Exemplo: "2026-06-10T14:00:00-03:00" → "2026-06-10T17:00:00.000Z"
+ */
+export function paraUTC(iso: string): string {
+  return new Date(iso).toISOString();
+}
+
+/**
  * Formata um instante ISO para uma string curta legível em PT-BR no fuso BRT.
  * Exemplo: "2026-06-04T17:00:00Z" → "04/06 às 14h"
  */
