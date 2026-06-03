@@ -1,0 +1,6 @@
+name = "clinica-cheia"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+
+[triggers]
+crons = ["*/15 * * * *"]
