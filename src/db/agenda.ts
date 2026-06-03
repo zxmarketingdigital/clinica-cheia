@@ -1,6 +1,7 @@
 import type { Agendamento, Cliente, Procedimento } from "./types";
 import { cadenciaVencida } from "../lib/cadencia";
 import type { CadenciaVencida } from "../lib/cadencia";
+import { janelaDiaAnterior } from "../lib/tempo";
 
 export class Agenda {
   constructor(private db: any) {}
@@ -154,6 +155,33 @@ export class Agenda {
       .update({ atendido: true })
       .eq("id", id);
     if (error) throw error;
+  }
+
+  /**
+   * Clientes cujo agendamento mais recente é anterior a corteISO (ou que nunca
+   * agendaram). Delega a agregação max(inicio) ao RPC clientes_inativos para
+   * evitar query builder frágil. Definição do RPC em 0003_rpc_inativos.sql.
+   */
+  async inativosDesde(corteISO: string) {
+    const { data, error } = await this.db.rpc("clientes_inativos", { corte: corteISO });
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({ cliente: { nome: r.nome, telefone: r.telefone } }));
+  }
+
+  /**
+   * Agendamentos com status "realizado" cuja janela de início cobre o dia
+   * ANTERIOR a agoraISO em BRT. Usa import estático de janelaDiaAnterior.
+   */
+  async realizadosOntem(agoraISO: string) {
+    const { de, ate } = janelaDiaAnterior(new Date(agoraISO));
+    const { data, error } = await this.db
+      .from("agendamentos")
+      .select("clientes(nome,telefone)")
+      .eq("status", "realizado")
+      .gte("inicio", de)
+      .lte("inicio", ate);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({ cliente: { nome: r.clientes?.nome, telefone: r.clientes?.telefone } }));
   }
 
   /**

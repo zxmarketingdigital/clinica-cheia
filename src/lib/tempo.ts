@@ -50,6 +50,30 @@ export function janelaDiaSeguinte(agora: Date): { de: string; ate: string } {
 }
 
 /**
+ * Retorna o início (00:00:00.000) e fim (23:59:59.999) do DIA ANTERIOR
+ * em horário de Brasília, como strings ISO 8601 em UTC.
+ *
+ * Exemplo: agora = 2026-06-03T12:00:00Z
+ *   dia anterior BRT = 02/06/2026
+ *   de  = 2026-06-02T03:00:00.000Z  (02/06 00:00 BRT)
+ *   ate = 2026-06-03T02:59:59.999Z  (02/06 23:59:59.999 BRT)
+ */
+export function janelaDiaAnterior(agora: Date): { de: string; ate: string } {
+  const { year, month, day } = partsBRT(agora);
+
+  // Dia anterior em BRT: decrementamos o dia e deixamos o Date normalizar.
+  const startBRT = new Date(Date.UTC(year, month - 1, day - 1, 0, 0, 0, 0));
+  const endBRT   = new Date(Date.UTC(year, month - 1, day - 1, 23, 59, 59, 999));
+
+  // BRT = UTC - 3h → para converter "meia-noite BRT" para UTC somamos 3h
+  const offsetMs = 3 * 60 * 60 * 1000; // +3h
+  const de  = new Date(startBRT.getTime() + offsetMs);
+  const ate = new Date(endBRT.getTime()   + offsetMs);
+
+  return { de: de.toISOString(), ate: ate.toISOString() };
+}
+
+/**
  * Formata um instante ISO para uma string curta legível em PT-BR no fuso BRT.
  * Exemplo: "2026-06-04T17:00:00Z" → "04/06 às 14h"
  */
