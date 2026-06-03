@@ -14,10 +14,17 @@ export async function sendUazapi(
   texto: string,
   f: typeof fetch,
 ): Promise<void> {
-  const r = await f(`${cfg.url}/send/text`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", token: cfg.token },
-    body: JSON.stringify({ number: telefone, text: texto }),
-  });
-  if (!r.ok) throw new Error(`uazapi send ${r.status}`);
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await f(`${cfg.url}/send/text`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", token: cfg.token },
+      body: JSON.stringify({ number: telefone, text: texto }),
+      signal: ctrl.signal,
+    });
+    if (!r.ok) throw new Error(`uazapi send ${r.status}`);
+  } finally {
+    clearTimeout(t);
+  }
 }

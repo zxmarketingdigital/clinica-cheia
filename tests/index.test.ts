@@ -16,3 +16,8 @@ it("agentesParaHora mapeia as horas certas", () => {
   expect(agentesParaHora(9)).toContain("reativador");
   expect(agentesParaHora(3)).toEqual([]);
 });
+it("POST /webhook com token errado retorna 401", async () => {
+  const req = new Request("https://x/webhook?token=errado", { method: "POST", body: "{}" });
+  const res = await worker.fetch(req, { WEBHOOK_SECRET: "s" } as any, {} as any);
+  expect(res.status).toBe(401);
+});

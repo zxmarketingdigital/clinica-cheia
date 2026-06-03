@@ -29,14 +29,21 @@ function deps(env: any) {
 }
 
 export default {
-  async fetch(req: Request, env: any, _ctx?: ExecutionContext): Promise<Response> {
+  async fetch(req: Request, env: any, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/health") return new Response("ok");
     if (url.pathname === "/webhook" && req.method === "POST") {
+      const secret = (env as any).WEBHOOK_SECRET;
+      if (secret && url.searchParams.get("token") !== secret) {
+        return new Response("unauthorized", { status: 401 });
+      }
       try {
         const { cfg, agenda, wa, llm } = deps(env);
         const msg = normalizeInbound(cfg.whatsapp.provider, await req.json());
-        if (msg) await handleInbound(msg, { llm, agenda, wa });
+        if (msg) {
+          const p = handleInbound(msg, { llm, agenda, wa }).catch(e => console.error("handleInbound", e));
+          if (ctx?.waitUntil) ctx.waitUntil(p); else await p;
+        }
       } catch (e) {
         console.error("webhook erro", e);
       }

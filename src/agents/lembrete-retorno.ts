@@ -11,9 +11,9 @@ export async function runLembreteRetorno(ctx: AgenteCtx): Promise<void> {
         procedimento: v.procedimento.nome,
       });
       await ctx.wa.send(v.cliente.telefone, texto);
-      await ctx.agenda.logMensagem(v.cliente.telefone, "out", texto, "lembrete-retorno");
+      await ctx.agenda.logMensagem(v.cliente.telefone, "out", texto, "lembrete-retorno", v.procedimento.nome);
     } catch (err) {
-      console.error(`[lembrete-retorno] erro ao processar ${v.cliente.telefone}:`, err);
+      console.error("[lembrete-retorno] erro ao processar item da cadência:", err);
     }
   }
 }

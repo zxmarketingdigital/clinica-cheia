@@ -43,7 +43,7 @@ export class Agenda {
     const inicioUTC = paraUTC(inicio);
     const { data, error } = await this.db
       .from("agendamentos")
-      .insert({ cliente_id, procedimento_id, inicio: inicioUTC })
+      .upsert({ cliente_id, procedimento_id, inicio: inicioUTC }, { onConflict: "cliente_id,inicio" })
       .select()
       .single();
     if (error) throw error;
@@ -66,9 +66,10 @@ export class Agenda {
     telefone: string,
     direcao: "in" | "out",
     corpo: string,
-    agente?: string
+    agente?: string,
+    ref?: string
   ) {
-    await this.db.from("mensagens").insert({ telefone, direcao, corpo, agente });
+    await this.db.from("mensagens").insert({ telefone, direcao, corpo, agente, ref });
   }
 
   /**
@@ -202,8 +203,8 @@ export class Agenda {
       .eq("telefone", telefone)
       .eq("agente", "lembrete-retorno")
       .eq("direcao", "out")
+      .eq("ref", procedimentoNome)
       .gte("criado_em", desde)
-      .ilike("corpo", `%${procedimentoNome}%`)
       .limit(1);
     if (error) throw error;
     return (data ?? []).length > 0;

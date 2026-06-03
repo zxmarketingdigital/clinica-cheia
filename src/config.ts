@@ -11,6 +11,7 @@ const base = z.object({
   SUPABASE_SERVICE_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   GOOGLE_REVIEW_LINK: z.string().url(),
+  WEBHOOK_SECRET: z.string().optional(),
 });
 
 const wa = z.discriminatedUnion("WHATSAPP_PROVIDER", [
@@ -41,6 +42,7 @@ export function parseConfig(env: Record<string, string>) {
     supabase: { url: b.SUPABASE_URL, key: b.SUPABASE_SERVICE_KEY },
     gemini: { key: b.GEMINI_API_KEY },
     googleReviewLink: b.GOOGLE_REVIEW_LINK,
+    webhookSecret: b.WEBHOOK_SECRET,
     whatsapp:
       w.WHATSAPP_PROVIDER === "uazapi"
         ? { provider: "uazapi" as const, url: w.UAZAPI_URL, token: w.UAZAPI_TOKEN }

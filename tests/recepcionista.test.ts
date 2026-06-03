@@ -13,3 +13,16 @@ it("quando Gemini sinaliza AGENDAR, cria agendamento e confirma", async () => {
   expect(agenda.criarAgendamento).toHaveBeenCalledOnce();
   expect(wa.send).toHaveBeenCalled();
 });
+it("AGENDAR com data no passado não cria agendamento mas ainda responde ao cliente", async () => {
+  const llm = vi.fn().mockResolvedValue("Certo! [[AGENDAR nome=X procedimento=Botox inicio=2020-01-01T10:00:00Z]]");
+  const agenda: any = {
+    upsertCliente: vi.fn().mockResolvedValue({ id: "c2", nome: "X", telefone: "5586..." }),
+    procedimentoPorNome: vi.fn().mockResolvedValue({ id: "p2", nome: "Botox" }),
+    criarAgendamento: vi.fn().mockResolvedValue({ id: "a2" }),
+    logMensagem: vi.fn().mockResolvedValue(undefined),
+  };
+  const wa = { send: vi.fn().mockResolvedValue(undefined) };
+  await handleInbound({ telefone: "5586...", texto: "quero botox" }, { llm, agenda, wa } as any);
+  expect(agenda.criarAgendamento).not.toHaveBeenCalled();
+  expect(wa.send).toHaveBeenCalled();
+});

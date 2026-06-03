@@ -18,7 +18,7 @@ export async function runReativador(ctx: ReativadorCtx): Promise<void> {
       await ctx.wa.send(i.cliente.telefone, texto);
       await ctx.agenda.logMensagem(i.cliente.telefone, "out", texto, "reativador");
     } catch (err) {
-      console.error(`[reativador] erro ao processar inativo ${i.cliente.telefone}:`, err);
+      console.error("[reativador] erro ao processar inativo:", err);
     }
   }
 
@@ -30,7 +30,7 @@ export async function runReativador(ctx: ReativadorCtx): Promise<void> {
       await ctx.wa.send(o.cliente.telefone, texto);
       await ctx.agenda.logMensagem(o.cliente.telefone, "out", texto, "avaliacao-google");
     } catch (err) {
-      console.error(`[reativador] erro ao pedir avaliação ${o.cliente.telefone}:`, err);
+      console.error("[reativador] erro ao pedir avaliação:", err);
     }
   }
 }

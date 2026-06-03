@@ -1,4 +1,5 @@
 import { niche } from "../niche/clinica-estetica";
+import { paraUTC } from "../lib/tempo";
 
 const RE = /\[\[AGENDAR ([^\]]+)\]\]/;
 
@@ -32,9 +33,13 @@ export async function handleInbound(
 
   const ag = parseAgendar(resp);
   if (ag) {
-    const cli = await ctx.agenda.upsertCliente(ag.nome, msg.telefone);
-    const proc = await ctx.agenda.procedimentoPorNome(ag.procedimento);
-    await ctx.agenda.criarAgendamento(cli.id, proc?.id ?? null, ag.inicio);
+    const d = new Date(ag.inicio);
+    const nome = (ag.nome ?? "").slice(0, 200);
+    if (nome && !isNaN(d.getTime()) && d.getTime() > Date.now()) {
+      const cli = await ctx.agenda.upsertCliente(nome, msg.telefone);
+      const proc = await ctx.agenda.procedimentoPorNome(ag.procedimento);
+      await ctx.agenda.criarAgendamento(cli.id, proc?.id ?? null, paraUTC(ag.inicio));
+    }
   }
 
   const limpo = resp.replace(RE, "").trim();
