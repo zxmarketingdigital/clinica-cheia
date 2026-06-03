@@ -93,6 +93,70 @@ export class Agenda {
   }
 
   /**
+   * Agendamentos passados (inicio < agoraISO) cujo status ainda é agendado ou
+   * confirmado — ou seja, o paciente não compareceu e o sistema ainda não
+   * registrou o resultado. Retorna id + dados do cliente embutidos.
+   *
+   * Nota: não há teste com fakeClient aqui porque o mock da chain
+   * (.in().lt()) é frágil. A lógica de negócio do agente é coberta em
+   * tests/resgate.test.ts mockando a própria Agenda.
+   */
+  async faltasRecentes(agoraISO: string) {
+    const { data, error } = await this.db
+      .from("agendamentos")
+      .select("id, inicio, status, clientes(nome,telefone)")
+      .in("status", ["agendado", "confirmado"])
+      .lt("inicio", agoraISO);
+    if (error) throw error;
+    return (data ?? []).map((r: any) => ({
+      id: r.id,
+      cliente: { nome: r.clientes?.nome, telefone: r.clientes?.telefone },
+    }));
+  }
+
+  /** Atualiza o status de um agendamento para "faltou". */
+  async marcarFaltou(id: string): Promise<void> {
+    const { error } = await this.db
+      .from("agendamentos")
+      .update({ status: "faltou" })
+      .eq("id", id);
+    if (error) throw error;
+  }
+
+  /**
+   * Retorna o próximo item não atendido da lista de espera, ordenado por
+   * data de criação (FIFO). Filtra por procedimento_id quando informado.
+   *
+   * Nota: não há teste com fakeClient aqui porque o mock da chain
+   * (.eq(atendido).order().limit()) é frágil. A lógica do agente é
+   * coberta em tests/resgate.test.ts mockando a Agenda.
+   */
+  async proximoListaEspera(procedimento_id: string | null) {
+    let q = this.db
+      .from("lista_espera")
+      .select("id, clientes(nome,telefone)")
+      .eq("atendido", false)
+      .order("criado_em", { ascending: true })
+      .limit(1);
+    if (procedimento_id) q = q.eq("procedimento_id", procedimento_id);
+    const { data, error } = await q;
+    if (error) throw error;
+    const r = (data ?? [])[0];
+    return r
+      ? { id: r.id, cliente: { nome: r.clientes?.nome, telefone: r.clientes?.telefone } }
+      : null;
+  }
+
+  /** Marca um item da lista de espera como atendido, retirando-o da fila. */
+  async marcarListaEsperaAtendido(id: string): Promise<void> {
+    const { error } = await this.db
+      .from("lista_espera")
+      .update({ atendido: true })
+      .eq("id", id);
+    if (error) throw error;
+  }
+
+  /**
    * Retorna true se já enviou lembrete-retorno para esse telefone e procedimento
    * nos últimos 60 dias. Evita reenvio em execuções subsequentes do cron.
    *
