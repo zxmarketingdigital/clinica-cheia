@@ -1,4 +1,4 @@
-import type { Agendamento, Cliente } from "./types";
+import type { Agendamento, Cliente, Procedimento } from "./types";
 
 export class Agenda {
   constructor(private db: any) {}
@@ -44,6 +44,12 @@ export class Agenda {
       .single();
     if (error) throw error;
     return data;
+  }
+
+  async procedimentoPorNome(nome: string): Promise<Procedimento | null> {
+    const { data, error } = await this.db.from("procedimentos").select("*").eq("nome", nome).maybeSingle();
+    if (error) throw error;
+    return data ?? null;
   }
 
   async clientePorId(id: string): Promise<Cliente> {
