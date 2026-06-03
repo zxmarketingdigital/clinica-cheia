@@ -46,6 +46,12 @@ export class Agenda {
     return data;
   }
 
+  async clientePorId(id: string): Promise<Cliente> {
+    const { data, error } = await this.db.from("clientes").select("*").eq("id", id).single();
+    if (error) throw error;
+    return data;
+  }
+
   async logMensagem(
     telefone: string,
     direcao: "in" | "out",
