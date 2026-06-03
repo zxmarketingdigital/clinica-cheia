@@ -1,4 +1,6 @@
 import type { Agendamento, Cliente, Procedimento } from "./types";
+import { cadenciaVencida } from "../lib/cadencia";
+import type { CadenciaVencida } from "../lib/cadencia";
 
 export class Agenda {
   constructor(private db: any) {}
@@ -65,5 +67,51 @@ export class Agenda {
     agente?: string
   ) {
     await this.db.from("mensagens").insert({ telefone, direcao, corpo, agente });
+  }
+
+  /**
+   * Retorna todos os (cliente, procedimento) com cadência de retorno vencida
+   * em relação a refISO. A lógica de negócio fica isolada em cadenciaVencida()
+   * (função pura, testada em tests/cadencia.test.ts).
+   * Usa import estático de ../lib/cadencia para evitar dynamic import.
+   */
+  async realizadosComCadenciaVencendo(refISO: string): Promise<CadenciaVencida[]> {
+    const { data, error } = await this.db
+      .from("agendamentos")
+      .select("inicio, clientes(nome,telefone), procedimentos(nome,cadencia_retorno_dias)")
+      .eq("status", "realizado");
+    if (error) throw error;
+    const rows = (data ?? []).map((r: any) => ({
+      cliente: { nome: r.clientes?.nome, telefone: r.clientes?.telefone },
+      procedimento: {
+        nome: r.procedimentos?.nome,
+        cadencia_retorno_dias: r.procedimentos?.cadencia_retorno_dias ?? null,
+      },
+      inicio: r.inicio,
+    }));
+    return cadenciaVencida(rows, refISO);
+  }
+
+  /**
+   * Retorna true se já enviou lembrete-retorno para esse telefone e procedimento
+   * nos últimos 60 dias. Evita reenvio em execuções subsequentes do cron.
+   *
+   * Nota: não há teste unitário com fakeClient para este método porque o
+   * fakeClient simples não modela .ilike/.limit bem. A lógica crítica de
+   * cadência (o coração do agente) está coberta pelo teste PURO de cadencia.ts.
+   */
+  async jaEnviouLembrete(telefone: string, procedimentoNome: string): Promise<boolean> {
+    const desde = new Date(Date.now() - 60 * 86400000).toISOString();
+    const { data, error } = await this.db
+      .from("mensagens")
+      .select("id")
+      .eq("telefone", telefone)
+      .eq("agente", "lembrete-retorno")
+      .eq("direcao", "out")
+      .gte("criado_em", desde)
+      .ilike("corpo", `%${procedimentoNome}%`)
+      .limit(1);
+    if (error) throw error;
+    return (data ?? []).length > 0;
   }
 }
