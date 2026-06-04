@@ -245,4 +245,21 @@ export class Agenda {
     if (error) throw error;
     return (data ?? []).length > 0;
   }
+
+  /**
+   * Dedup de inbound por messageId do provider (guardado em `ref` na linha "in").
+   * Retorna true se essa mensagem já foi processada — evita que reenvios da Z-API
+   * (retry quando o ACK demora) gerem chamada Gemini + resposta WhatsApp duplicadas.
+   * Best-effort (check-then-skip): cobre o caso comum de reenvio sequencial.
+   */
+  async mensagemJaProcessada(msgId: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from("mensagens")
+      .select("id")
+      .eq("ref", msgId)
+      .eq("direcao", "in")
+      .limit(1);
+    if (error) throw error;
+    return (data ?? []).length > 0;
+  }
 }

@@ -22,10 +22,12 @@ export interface RecepCtx {
 }
 
 export async function handleInbound(
-  msg: { telefone: string; texto: string },
+  msg: { telefone: string; texto: string; msgId?: string },
   ctx: RecepCtx
 ) {
-  await ctx.agenda.logMensagem(msg.telefone, "in", msg.texto, "recepcionista");
+  // Dedup: reenvio da Z-API com o mesmo messageId não reprocessa nem responde 2x.
+  if (msg.msgId && (await ctx.agenda.mensagemJaProcessada(msg.msgId))) return;
+  await ctx.agenda.logMensagem(msg.telefone, "in", msg.texto, "recepcionista", msg.msgId);
 
   const system = `${niche.persona}\nProcedimentos: ${niche.procedimentosDefault.map(p => p.nome).join(", ")}.\nQuando tiver nome+procedimento+data/hora, inclua no fim: [[AGENDAR nome=.. procedimento=.. inicio=ISO8601]].`;
 

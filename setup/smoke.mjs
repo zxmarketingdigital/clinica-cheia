@@ -56,16 +56,21 @@ const SKIP = "⚠️ ";
  * @returns {{ passou: boolean; msg: string }}
  */
 function checkVars(env) {
-  const obrigatorias = [
+  const base = [
     "CLINICA_NOME",
     "WHATSAPP_PROVIDER",
-    "UAZAPI_URL",
-    "UAZAPI_TOKEN",
     "SUPABASE_URL",
     "SUPABASE_SERVICE_KEY",
     "GEMINI_API_KEY",
     "GOOGLE_REVIEW_LINK",
   ];
+  const porProvider = {
+    uazapi: ["UAZAPI_URL", "UAZAPI_TOKEN"],
+    zapi: ["ZAPI_INSTANCE", "ZAPI_TOKEN", "ZAPI_CLIENT_TOKEN"],
+    meta: ["META_PHONE_ID", "META_TOKEN"],
+  };
+  const prov = (env["WHATSAPP_PROVIDER"] || "uazapi").toLowerCase();
+  const obrigatorias = [...base, ...(porProvider[prov] || porProvider.uazapi)];
   const faltando = obrigatorias.filter((k) => !env[k]);
   if (faltando.length > 0) {
     return { passou: false, msg: `Variáveis ausentes: ${faltando.join(", ")}` };
@@ -123,31 +128,35 @@ async function checkWhatsApp(env) {
   }
 
   const provider = (env["WHATSAPP_PROVIDER"] || "uazapi").toLowerCase();
-  if (provider !== "uazapi") {
-    return { passou: true, pulado: true, msg: `Provider '${provider}' não suportado no smoke v1 — check pulado.` };
+  const mensagem = "🔧 Smoke test Clínica Cheia — pode ignorar esta mensagem.";
+
+  let endpoint, headers, body;
+  if (provider === "uazapi") {
+    endpoint = `${env["UAZAPI_URL"]}/send-text`;
+    headers = { "Content-Type": "application/json", Authorization: env["UAZAPI_TOKEN"] };
+    body = JSON.stringify({ phone, message: mensagem });
+  } else if (provider === "zapi") {
+    endpoint = `https://api.z-api.io/instances/${env["ZAPI_INSTANCE"]}/token/${env["ZAPI_TOKEN"]}/send-text`;
+    headers = { "Content-Type": "application/json", "Client-Token": env["ZAPI_CLIENT_TOKEN"] };
+    body = JSON.stringify({ phone, message: mensagem });
+  } else {
+    return { passou: true, pulado: true, msg: `Provider '${provider}' não suportado no smoke — check pulado.` };
   }
 
-  const url = env["UAZAPI_URL"];
-  const token = env["UAZAPI_TOKEN"];
-  const body = JSON.stringify({
-    phone,
-    message: "🔧 Smoke test Clínica Cheia — pode ignorar esta mensagem.",
-  });
-
   try {
-    const res = await fetch(`${url}/send-text`, {
+    const res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: token },
+      headers,
       body,
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
-      return { passou: false, pulado: false, msg: `uazapi retornou ${res.status}: ${txt.slice(0, 200)}` };
+      return { passou: false, pulado: false, msg: `${provider} retornou ${res.status}: ${txt.slice(0, 200)}` };
     }
-    return { passou: true, pulado: false, msg: `Mensagem de teste enviada para ${phone}.` };
+    return { passou: true, pulado: false, msg: `Mensagem de teste enviada para ${phone} via ${provider}.` };
   } catch (e) {
-    return { passou: false, pulado: false, msg: `Erro ao chamar uazapi: ${e.message}` };
+    return { passou: false, pulado: false, msg: `Erro ao chamar ${provider}: ${e.message}` };
   }
 }
 
@@ -157,10 +166,10 @@ async function checkWhatsApp(env) {
  * @returns {Promise<{ passou: boolean; msg: string }>}
  */
 async function checkGemini(apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
   const body = JSON.stringify({
     contents: [{ parts: [{ text: "Responda apenas a palavra: ok" }] }],
-    generationConfig: { maxOutputTokens: 5 },
+    generationConfig: { maxOutputTokens: 50 },
   });
   try {
     const res = await fetch(url, {

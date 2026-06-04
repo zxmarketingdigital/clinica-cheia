@@ -11,7 +11,11 @@ const base = z.object({
   SUPABASE_SERVICE_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   GOOGLE_REVIEW_LINK: z.string().url(),
-  WEBHOOK_SECRET: z.string().optional(),
+  // Obrigatório (>=32 chars): sem ele o webhook do Worker ficaria aberto.
+  // parseConfig lança no cold start se ausente/curto — fail-closed.
+  WEBHOOK_SECRET: z.string().min(32),
+  // Gating opcional p/ instância de WhatsApp compartilhada (ex: "/clinica").
+  REQUIRE_KEYWORD: z.string().optional(),
 });
 
 const wa = z.discriminatedUnion("WHATSAPP_PROVIDER", [
@@ -43,6 +47,7 @@ export function parseConfig(env: Record<string, string>) {
     gemini: { key: b.GEMINI_API_KEY },
     googleReviewLink: b.GOOGLE_REVIEW_LINK,
     webhookSecret: b.WEBHOOK_SECRET,
+    requireKeyword: b.REQUIRE_KEYWORD,
     whatsapp:
       w.WHATSAPP_PROVIDER === "uazapi"
         ? { provider: "uazapi" as const, url: w.UAZAPI_URL, token: w.UAZAPI_TOKEN }

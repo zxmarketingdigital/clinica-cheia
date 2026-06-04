@@ -1,7 +1,7 @@
 import { parseConfig } from "./config";
 import { makeDb } from "./db/client";
 import { Agenda } from "./db/agenda";
-import { makeAdapter, normalizeInbound } from "./whatsapp/adapter";
+import { makeAdapter, normalizeInbound, applyKeywordGate } from "./whatsapp/adapter";
 import { geminiChat } from "./llm/gemini";
 import { handleInbound } from "./agents/recepcionista";
 import { runConfirmador } from "./agents/confirmador";
@@ -28,18 +28,32 @@ function deps(env: any) {
   return { cfg, agenda, wa, llm };
 }
 
+/** Comparação timing-safe do token do webhook. Fail-closed: sem secret/token → false.
+ *  Aceita o secret via header X-Webhook-Secret (preferido) ou query ?token= (compat). */
+function tokenOk(provided: string | null, secret: string | undefined): boolean {
+  if (!secret || !provided) return false;
+  const enc = new TextEncoder();
+  const a = enc.encode(provided);
+  const b = enc.encode(secret);
+  if (a.byteLength !== b.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(a, b);
+}
+
 export default {
   async fetch(req: Request, env: any, ctx?: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/health") return new Response("ok");
     if (url.pathname === "/webhook" && req.method === "POST") {
-      const secret = (env as any).WEBHOOK_SECRET;
-      if (secret && url.searchParams.get("token") !== secret) {
+      const provided = req.headers.get("x-webhook-secret") ?? url.searchParams.get("token");
+      if (!tokenOk(provided, (env as any).WEBHOOK_SECRET)) {
         return new Response("unauthorized", { status: 401 });
       }
       try {
         const { cfg, agenda, wa, llm } = deps(env);
-        const msg = normalizeInbound(cfg.whatsapp.provider, await req.json());
+        const msg = applyKeywordGate(
+          normalizeInbound(cfg.whatsapp.provider, await req.json()),
+          cfg.requireKeyword,
+        );
         if (msg) {
           const p = handleInbound(msg, { llm, agenda, wa }).catch(e => console.error("handleInbound", e));
           if (ctx?.waitUntil) ctx.waitUntil(p); else await p;

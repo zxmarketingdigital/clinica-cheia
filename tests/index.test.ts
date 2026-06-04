@@ -21,3 +21,13 @@ it("POST /webhook com token errado retorna 401", async () => {
   const res = await worker.fetch(req, { WEBHOOK_SECRET: "s" } as any, {} as any);
   expect(res.status).toBe(401);
 });
+it("POST /webhook sem token nenhum retorna 401 (fail-closed)", async () => {
+  const req = new Request("https://x/webhook", { method: "POST", body: "{}" });
+  const res = await worker.fetch(req, { WEBHOOK_SECRET: "s" } as any, {} as any);
+  expect(res.status).toBe(401);
+});
+it("POST /webhook com header X-Webhook-Secret errado retorna 401", async () => {
+  const req = new Request("https://x/webhook", { method: "POST", body: "{}", headers: { "X-Webhook-Secret": "errado" } });
+  const res = await worker.fetch(req, { WEBHOOK_SECRET: "s" } as any, {} as any);
+  expect(res.status).toBe(401);
+});
