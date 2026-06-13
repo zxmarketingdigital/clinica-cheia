@@ -8,6 +8,7 @@ it("envia confirmação pra cada agendamento de amanhã e loga", async () => {
     ]),
     clientePorId: vi.fn().mockResolvedValue({ nome: "Ana", telefone: "5585..." }),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runConfirmador({ agenda, wa, agora: new Date("2026-06-03T12:00:00Z") } as any);
@@ -27,6 +28,7 @@ it("continua para o próximo agendamento quando wa.send rejeita no primeiro", as
       .mockResolvedValueOnce({ nome: "Ana", telefone: "5585..." })
       .mockResolvedValueOnce({ nome: "Bia", telefone: "5586..." }),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = {
     send: vi.fn()

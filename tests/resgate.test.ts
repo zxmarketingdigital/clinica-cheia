@@ -6,6 +6,7 @@ it("marca falta e envia resgate", async () => {
     faltasRecentes: vi.fn().mockResolvedValue([{ id:"a1", cliente:{nome:"Ana",telefone:"55..."} }]),
     marcarFaltou: vi.fn().mockResolvedValue(undefined),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runResgate({ agenda, wa, agora: new Date() } as any);
@@ -19,6 +20,7 @@ it("runResgate chama faltasRecentes com janela de dois argumentos (dia anterior)
     faltasRecentes: vi.fn().mockResolvedValue([]),
     marcarFaltou: vi.fn().mockResolvedValue(undefined),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runResgate({ agenda, wa, agora: new Date("2026-06-03T12:00:00Z") } as any);
@@ -44,6 +46,7 @@ it("runResgate continua após erro num item (não aborta o batch)", async () => 
       .mockRejectedValueOnce(new Error("db error"))
       .mockResolvedValue(undefined),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runResgate({ agenda, wa, agora: new Date() } as any);
@@ -57,6 +60,7 @@ it("oferta vaga aberta ao próximo da lista de espera e marca atendido", async (
     proximoListaEspera: vi.fn().mockResolvedValue({ id:"l1", cliente:{nome:"Bia",telefone:"56..."} }),
     marcarListaEsperaAtendido: vi.fn().mockResolvedValue(undefined),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await ofertarVaga({ agenda, wa, agora: new Date() } as any, "p1");
@@ -68,7 +72,7 @@ it("oferta vaga aberta ao próximo da lista de espera e marca atendido", async (
 });
 
 it("ofertarVaga sem ninguém na lista não envia nada", async () => {
-  const agenda: any = { proximoListaEspera: vi.fn().mockResolvedValue(null), logMensagem: vi.fn() };
+  const agenda: any = { proximoListaEspera: vi.fn().mockResolvedValue(null), logMensagem: vi.fn(), clienteOptOut: async () => false };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await ofertarVaga({ agenda, wa, agora: new Date() } as any, "p1");
   expect(wa.send).not.toHaveBeenCalled();

@@ -1,6 +1,7 @@
 import { niche } from "../niche/clinica-estetica";
 import type { AgenteCtx } from "./confirmador";
 import { janelaDiaAnterior } from "../lib/tempo";
+import { sendProativo } from "../lib/envio";
 
 /**
  * Varre agendamentos do DIA ANTERIOR em BRT ainda em status agendado/confirmado
@@ -18,8 +19,7 @@ export async function runResgate(ctx: AgenteCtx): Promise<void> {
     try {
       await ctx.agenda.marcarFaltou(f.id);
       const texto = niche.templates.resgate({ nome: f.cliente.nome });
-      await ctx.wa.send(f.cliente.telefone, texto);
-      await ctx.agenda.logMensagem(f.cliente.telefone, "out", texto, "resgate");
+      await sendProativo(ctx, f.cliente.telefone, texto, "resgate");
     } catch (err) {
       console.error(`[resgate] erro ao processar falta ${f.id}:`, err);
     }
@@ -39,7 +39,7 @@ export async function ofertarVaga(
   const prox = await ctx.agenda.proximoListaEspera(procedimento_id);
   if (!prox) return;
   const texto = niche.templates.convidarVaga({ nome: prox.cliente.nome });
-  await ctx.wa.send(prox.cliente.telefone, texto);
+  await sendProativo(ctx, prox.cliente.telefone, texto, "lista-espera");
+  // marca atendido mesmo em opt-out: remove da fila (não reofertaremos a quem saiu).
   await ctx.agenda.marcarListaEsperaAtendido(prox.id);
-  await ctx.agenda.logMensagem(prox.cliente.telefone, "out", texto, "lista-espera");
 }

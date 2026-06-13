@@ -13,6 +13,7 @@ describe("runLembreteRetorno", () => {
       ]),
       jaEnviouLembrete: vi.fn().mockResolvedValue(false),
       logMensagem: vi.fn().mockResolvedValue(undefined),
+      clienteOptOut: async () => false,
     };
     const wa = { send: vi.fn().mockResolvedValue(undefined) };
     await runLembreteRetorno({ agenda, wa, agora: new Date("2026-06-03") } as any);
@@ -31,6 +32,7 @@ describe("runLembreteRetorno", () => {
       ]),
       jaEnviouLembrete: vi.fn().mockResolvedValue(true), // já enviou
       logMensagem: vi.fn().mockResolvedValue(undefined),
+      clienteOptOut: async () => false,
     };
     const wa = { send: vi.fn().mockResolvedValue(undefined) };
     await runLembreteRetorno({ agenda, wa, agora: new Date("2026-06-03") } as any);
@@ -42,6 +44,7 @@ describe("runLembreteRetorno", () => {
       realizadosComCadenciaVencendo: vi.fn().mockResolvedValue([]),
       jaEnviouLembrete: vi.fn(),
       logMensagem: vi.fn(),
+      clienteOptOut: async () => false,
     };
     const wa = { send: vi.fn() };
     await runLembreteRetorno({ agenda, wa, agora: new Date("2026-06-03") } as any);
@@ -60,6 +63,7 @@ describe("runLembreteRetorno", () => {
       ]),
       jaEnviouLembrete: vi.fn().mockResolvedValue(false),
       logMensagem: vi.fn().mockResolvedValue(undefined),
+      clienteOptOut: async () => false,
     };
     const wa = { send: vi.fn().mockResolvedValue(undefined) };
     await runLembreteRetorno({ agenda, wa, agora: new Date("2026-06-03") } as any);
@@ -87,6 +91,7 @@ describe("runLembreteRetorno", () => {
       ]),
       jaEnviouLembrete: vi.fn().mockResolvedValue(false),
       logMensagem: vi.fn().mockResolvedValue(undefined),
+      clienteOptOut: async () => false,
     };
     const wa = { send: vi.fn().mockResolvedValue(undefined) };
     await runLembreteRetorno({ agenda, wa, agora: new Date("2026-06-03") } as any);

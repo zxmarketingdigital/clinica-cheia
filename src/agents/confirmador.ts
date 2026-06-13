@@ -1,5 +1,6 @@
 import { niche } from "../niche/clinica-estetica";
 import { janelaDiaSeguinte, formatarQuando } from "../lib/tempo";
+import { sendProativo } from "../lib/envio";
 
 export interface AgenteCtx {
   agenda: any;
@@ -14,8 +15,7 @@ export async function runConfirmador(ctx: AgenteCtx): Promise<void> {
     try {
       const cli = await ctx.agenda.clientePorId(a.cliente_id);
       const texto = niche.templates.confirmacao({ nome: cli.nome, quando: formatarQuando(a.inicio) });
-      await ctx.wa.send(cli.telefone, texto);
-      await ctx.agenda.logMensagem(cli.telefone, "out", texto, "confirmador");
+      await sendProativo(ctx, cli.telefone, texto, "confirmador");
     } catch (err) {
       console.error(`[confirmador] erro ao processar agendamento ${a.id}:`, err);
     }

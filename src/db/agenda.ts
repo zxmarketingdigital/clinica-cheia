@@ -72,6 +72,25 @@ export class Agenda {
     await this.db.from("mensagens").insert({ telefone, direcao, corpo, agente, ref });
   }
 
+  /** Registra opt-out (LGPD). Idempotente — "SAIR" repetido não duplica. */
+  async marcarOptOut(telefone: string): Promise<void> {
+    const { error } = await this.db
+      .from("opt_outs")
+      .upsert({ telefone }, { onConflict: "telefone" });
+    if (error) throw error;
+  }
+
+  /** true se o telefone pediu opt-out — bloqueia todo envio proativo. */
+  async clienteOptOut(telefone: string): Promise<boolean> {
+    const { data, error } = await this.db
+      .from("opt_outs")
+      .select("telefone")
+      .eq("telefone", telefone)
+      .maybeSingle();
+    if (error) throw error;
+    return data != null;
+  }
+
   /**
    * Retorna todos os (cliente, procedimento) com cadência de retorno vencida
    * em relação a refISO. A lógica de negócio fica isolada em cadenciaVencida()

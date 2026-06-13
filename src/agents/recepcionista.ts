@@ -29,6 +29,16 @@ export async function handleInbound(
   if (msg.msgId && (await ctx.agenda.mensagemJaProcessada(msg.msgId))) return;
   await ctx.agenda.logMensagem(msg.telefone, "in", msg.texto, "recepcionista", msg.msgId);
 
+  // opt-out (LGPD): "SAIR" para o cliente de receber mensagens proativas. É uma
+  // resposta a um inbound (não proativo), então confirmamos e encerramos sem LLM.
+  if (msg.texto.trim().toUpperCase() === "SAIR") {
+    await ctx.agenda.marcarOptOut(msg.telefone);
+    const conf = "Pronto! Você não receberá mais nossas mensagens automáticas. Se mudar de ideia, é só chamar. 🤝";
+    await ctx.wa.send(msg.telefone, conf);
+    await ctx.agenda.logMensagem(msg.telefone, "out", conf, "opt-out");
+    return;
+  }
+
   const system = `${niche.persona}\nProcedimentos: ${niche.procedimentosDefault.map(p => p.nome).join(", ")}.\nQuando tiver nome+procedimento+data/hora, inclua no fim: [[AGENDAR nome=.. procedimento=.. inicio=ISO8601]].`;
 
   const resp = await ctx.llm({ system, user: msg.texto });

@@ -8,6 +8,7 @@ it("pede avaliação google pra atendidos de ontem", async () => {
     jaEnviouReativacao: vi.fn().mockResolvedValue(false),
     jaPediuAvaliacao: vi.fn().mockResolvedValue(false),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runReativador({ agenda, wa, agora: new Date(), reviewLink: "https://g/r" } as any);
@@ -25,6 +26,7 @@ it("reativa inativos com template de reativação", async () => {
     jaEnviouReativacao: vi.fn().mockResolvedValue(false),
     jaPediuAvaliacao: vi.fn().mockResolvedValue(false),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runReativador({ agenda, wa, agora: new Date(), reviewLink: "https://g/r" } as any);
@@ -43,6 +45,7 @@ it("não reativa inativo se jaEnviouReativacao retorna true", async () => {
     jaEnviouReativacao: vi.fn().mockResolvedValue(true),
     jaPediuAvaliacao: vi.fn().mockResolvedValue(false),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runReativador({ agenda, wa, agora: new Date(), reviewLink: "https://g/r" } as any);
@@ -57,6 +60,7 @@ it("não pede avaliação se jaPediuAvaliacao retorna true", async () => {
     jaEnviouReativacao: vi.fn().mockResolvedValue(false),
     jaPediuAvaliacao: vi.fn().mockResolvedValue(true),
     logMensagem: vi.fn().mockResolvedValue(undefined),
+    clienteOptOut: async () => false,
   };
   const wa = { send: vi.fn().mockResolvedValue(undefined) };
   await runReativador({ agenda, wa, agora: new Date(), reviewLink: "https://g/r" } as any);

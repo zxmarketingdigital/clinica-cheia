@@ -1,7 +1,8 @@
 import { it, expect, vi } from "vitest";
 import { handleInbound } from "../src/agents/recepcionista";
 it("quando Gemini sinaliza AGENDAR, cria agendamento e confirma", async () => {
-  const llm = vi.fn().mockResolvedValue("Perfeito! [[AGENDAR nome=Ana procedimento=Avaliação inicio=2026-06-10T14:00:00-03:00]]");
+  const inicioFuturo = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  const llm = vi.fn().mockResolvedValue(`Perfeito! [[AGENDAR nome=Ana procedimento=Avaliação inicio=${inicioFuturo}]]`);
   const agenda: any = {
     upsertCliente: vi.fn().mockResolvedValue({ id: "c1", nome: "Ana", telefone: "5585..." }),
     procedimentoPorNome: vi.fn().mockResolvedValue({ id: "p1", nome: "Avaliação" }),
