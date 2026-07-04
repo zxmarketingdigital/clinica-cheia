@@ -19,7 +19,7 @@ Roda **serverless** (Cloudflare Workers + Supabase), cérebro **Google Gemini**,
 Você **não programa nada** — o Claude Code configura tudo conversando com você:
 
 ```bash
-gh repo clone zxmarketingdigital/clinica-cheia
+git clone https://github.com/zxmarketingdigital/clinica-cheia.git
 cd clinica-cheia
 claude
 ```
