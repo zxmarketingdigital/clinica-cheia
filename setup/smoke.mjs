@@ -132,9 +132,10 @@ async function checkWhatsApp(env) {
 
   let endpoint, headers, body;
   if (provider === "uazapi") {
-    endpoint = `${env["UAZAPI_URL"]}/send-text`;
-    headers = { "Content-Type": "application/json", Authorization: env["UAZAPI_TOKEN"] };
-    body = JSON.stringify({ phone, message: mensagem });
+    // Este contrato precisa espelhar src/whatsapp/uazapi.ts.
+    endpoint = `${env["UAZAPI_URL"]}/send/text`;
+    headers = { "Content-Type": "application/json", token: env["UAZAPI_TOKEN"] };
+    body = JSON.stringify({ number: phone, text: mensagem });
   } else if (provider === "zapi") {
     endpoint = `https://api.z-api.io/instances/${env["ZAPI_INSTANCE"]}/token/${env["ZAPI_TOKEN"]}/send-text`;
     headers = { "Content-Type": "application/json", "Client-Token": env["ZAPI_CLIENT_TOKEN"] };
@@ -163,10 +164,12 @@ async function checkWhatsApp(env) {
 /**
  * Check 4 — Gemini: chamada trivial com GEMINI_API_KEY.
  * @param {string} apiKey
+ * @param {string | undefined} model
  * @returns {Promise<{ passou: boolean; msg: string }>}
  */
-async function checkGemini(apiKey) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+async function checkGemini(apiKey, model) {
+  const selectedModel = model || "gemini-flash-lite-latest";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
   const body = JSON.stringify({
     contents: [{ parts: [{ text: "Responda apenas a palavra: ok" }] }],
     generationConfig: { maxOutputTokens: 50 },
@@ -181,6 +184,10 @@ async function checkGemini(apiKey) {
     if (res.status === 400 || res.status === 401 || res.status === 403) {
       const txt = await res.text().catch(() => "");
       return { passou: false, msg: `Gemini auth/config error ${res.status}: ${txt.slice(0, 200)}` };
+    }
+    if (res.status === 404) {
+      const txt = await res.text().catch(() => "");
+      return { passou: false, msg: `Gemini retornou 404: o modelo pode ter sido aposentado; é possível sobrescrever com GEMINI_MODEL no .env. ${txt.slice(0, 200)}` };
     }
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
@@ -254,7 +261,7 @@ async function main() {
 
   // 4. Gemini
   if (env["GEMINI_API_KEY"]) {
-    const r = await checkGemini(env["GEMINI_API_KEY"]);
+    const r = await checkGemini(env["GEMINI_API_KEY"], env["GEMINI_MODEL"]);
     console.log(`${r.passou ? OK : FAIL}  [4/5] Gemini: ${r.msg}`);
     if (!r.passou) falhou = true;
   } else {

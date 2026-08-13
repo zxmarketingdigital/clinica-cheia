@@ -10,6 +10,7 @@ const base = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
+  GEMINI_MODEL: z.string().optional(),
   GOOGLE_REVIEW_LINK: z.string().url(),
   // Obrigatório (>=32 chars): sem ele o webhook do Worker ficaria aberto.
   // parseConfig lança no cold start se ausente/curto — fail-closed.
@@ -44,7 +45,7 @@ export function parseConfig(env: Record<string, string>) {
   return {
     clinicaNome: b.CLINICA_NOME,
     supabase: { url: b.SUPABASE_URL, key: b.SUPABASE_SERVICE_KEY },
-    gemini: { key: b.GEMINI_API_KEY },
+    gemini: { key: b.GEMINI_API_KEY, model: b.GEMINI_MODEL },
     googleReviewLink: b.GOOGLE_REVIEW_LINK,
     webhookSecret: b.WEBHOOK_SECRET,
     requireKeyword: b.REQUIRE_KEYWORD,

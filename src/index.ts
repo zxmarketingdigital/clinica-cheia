@@ -24,7 +24,7 @@ function deps(env: any) {
   const agenda = new Agenda(makeDb(cfg.supabase.url, cfg.supabase.key));
   const wa = makeAdapter(cfg.whatsapp);
   const llm = (p: { system: string; user: string }) =>
-    geminiChat({ key: cfg.gemini.key, ...p });
+    geminiChat({ ...p, key: cfg.gemini.key, model: cfg.gemini.model });
   return { cfg, agenda, wa, llm };
 }
 
