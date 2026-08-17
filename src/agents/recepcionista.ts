@@ -39,7 +39,15 @@ export async function handleInbound(
     return;
   }
 
-  const system = `${niche.persona}\nProcedimentos: ${niche.procedimentosDefault.map(p => p.nome).join(", ")}.\nQuando tiver nome+procedimento+data/hora, inclua no fim: [[AGENDAR nome=.. procedimento=.. inicio=ISO8601]].`;
+  let procedimentos = niche.procedimentosDefault.map(p => p.nome);
+  try {
+    const cadastrados = await ctx.agenda.listarProcedimentos();
+    if (cadastrados.length > 0) procedimentos = cadastrados.map((p: { nome: string }) => p.nome);
+  } catch (err) {
+    console.warn("[recepcionista] não foi possível carregar procedimentos do banco; usando defaults:", err);
+  }
+
+  const system = `${niche.persona}\nProcedimentos: ${procedimentos.join(", ")}.\nQuando tiver nome+procedimento+data/hora, inclua no fim: [[AGENDAR nome=.. procedimento=.. inicio=ISO8601]].`;
 
   const resp = await ctx.llm({ system, user: msg.texto });
 

@@ -19,6 +19,16 @@ export function agentesParaHora(hora: number): string[] {
   return map[hora] ?? [];
 }
 
+export function horaNoFuso(agora: Date, timezone: string): number {
+  return Number(
+    new Intl.DateTimeFormat("pt-BR", {
+      hour: "2-digit",
+      hourCycle: "h23",
+      timeZone: timezone,
+    }).format(agora)
+  );
+}
+
 function deps(env: any) {
   const cfg = parseConfig(env);
   const agenda = new Agenda(makeDb(cfg.supabase.url, cfg.supabase.key));
@@ -68,19 +78,13 @@ export default {
   async scheduled(_evt: any, env: any): Promise<void> {
     const { cfg, agenda, wa } = deps(env);
     const agora = new Date();
-    const horaBRT = Number(
-      new Intl.DateTimeFormat("pt-BR", {
-        hour: "2-digit",
-        hourCycle: "h23",
-        timeZone: "America/Sao_Paulo",
-      }).format(agora)
-    );
-    const ags = agentesParaHora(horaBRT);
-    if (ags.includes("confirmador")) await runConfirmador({ agenda, wa, agora });
-    if (ags.includes("resgate")) await runResgate({ agenda, wa, agora });
+    const horaLocal = horaNoFuso(agora, cfg.timezone);
+    const ags = agentesParaHora(horaLocal);
+    if (ags.includes("confirmador")) await runConfirmador({ agenda, wa, agora, timezone: cfg.timezone });
+    if (ags.includes("resgate")) await runResgate({ agenda, wa, agora, timezone: cfg.timezone });
     if (ags.includes("lembrete-retorno"))
-      await runLembreteRetorno({ agenda, wa, agora });
+      await runLembreteRetorno({ agenda, wa, agora, timezone: cfg.timezone });
     if (ags.includes("reativador"))
-      await runReativador({ agenda, wa, agora, reviewLink: cfg.googleReviewLink });
+      await runReativador({ agenda, wa, agora, timezone: cfg.timezone, reviewLink: cfg.googleReviewLink });
   },
 };

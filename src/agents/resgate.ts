@@ -4,16 +4,16 @@ import { janelaDiaAnterior } from "../lib/tempo";
 import { sendProativo } from "../lib/envio";
 
 /**
- * Varre agendamentos do DIA ANTERIOR em BRT ainda em status agendado/confirmado
+ * Varre agendamentos do DIA ANTERIOR no fuso da clínica ainda em status agendado/confirmado
  * (no-shows), marca cada um como "faltou" e envia o template de resgate ao cliente.
  *
- * Usa janela fechada [ontem 00:00 BRT, ontem 23:59:59 BRT) para evitar varrer
+ * Usa janela fechada [ontem 00:00, ontem 23:59:59) no fuso configurado para evitar varrer
  * todo o histórico e disparar mensagens em massa.
  *
  * Deve ser chamado por um Cron Trigger (ex: diariamente às 20h).
  */
 export async function runResgate(ctx: AgenteCtx): Promise<void> {
-  const { de, ate } = janelaDiaAnterior(ctx.agora);
+  const { de, ate } = janelaDiaAnterior(ctx.agora, ctx.timezone);
   const faltas = await ctx.agenda.faltasRecentes(de, ate);
   for (const f of faltas) {
     try {

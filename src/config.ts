@@ -5,12 +5,32 @@
 
 import { z } from "zod";
 
+export const DEFAULT_TIMEZONE = "America/Sao_Paulo";
+
+const timezoneSchema = z
+  .string()
+  .transform((value) => (value === "" ? undefined : value))
+  .refine(
+    (value) => {
+      if (value === undefined) return true;
+      try {
+        new Intl.DateTimeFormat(undefined, { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    "TIMEZONE precisa ser um identificador IANA válido (ex: America/Sao_Paulo, Europe/Lisbon)",
+  )
+  .optional();
+
 const base = z.object({
   CLINICA_NOME: z.string().min(1),
   SUPABASE_URL: z.string().url(),
   SUPABASE_SERVICE_KEY: z.string().min(1),
   GEMINI_API_KEY: z.string().min(1),
   GEMINI_MODEL: z.string().optional(),
+  TIMEZONE: timezoneSchema,
   GOOGLE_REVIEW_LINK: z.string().url(),
   // Obrigatório (>=32 chars): sem ele o webhook do Worker ficaria aberto.
   // parseConfig lança no cold start se ausente/curto — fail-closed.
@@ -46,6 +66,7 @@ export function parseConfig(env: Record<string, string>) {
     clinicaNome: b.CLINICA_NOME,
     supabase: { url: b.SUPABASE_URL, key: b.SUPABASE_SERVICE_KEY },
     gemini: { key: b.GEMINI_API_KEY, model: b.GEMINI_MODEL },
+    timezone: b.TIMEZONE ?? DEFAULT_TIMEZONE,
     googleReviewLink: b.GOOGLE_REVIEW_LINK,
     webhookSecret: b.WEBHOOK_SECRET,
     requireKeyword: b.REQUIRE_KEYWORD,

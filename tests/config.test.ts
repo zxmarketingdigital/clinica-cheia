@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseConfig } from "../src/config";
+import { DEFAULT_TIMEZONE, parseConfig } from "../src/config";
 describe("parseConfig", () => {
   it("rejeita provider whatsapp inválido", () => {
     expect(() => parseConfig({ WHATSAPP_PROVIDER: "telegram" } as any)).toThrow();
@@ -15,6 +15,18 @@ describe("parseConfig", () => {
     const c = parseConfig({ ...baseUazapi });
     expect(c.clinicaNome).toBe("Bella");
     expect(c.whatsapp.provider).toBe("uazapi");
+    expect(c.timezone).toBe("America/Sao_Paulo");
+  });
+  it("aceita TIMEZONE configurável", () => {
+    const c = parseConfig({ ...baseUazapi, TIMEZONE: "Europe/Lisbon" });
+    expect(c.timezone).toBe("Europe/Lisbon");
+  });
+  it("trata TIMEZONE vazio como ausente", () => {
+    const c = parseConfig({ ...baseUazapi, TIMEZONE: "" });
+    expect(c.timezone).toBe(DEFAULT_TIMEZONE);
+  });
+  it("rejeita TIMEZONE que não é um identificador IANA válido", () => {
+    expect(() => parseConfig({ ...baseUazapi, TIMEZONE: "America/Cidade_Que_Nao_Existe" })).toThrow();
   });
   it("rejeita sem WEBHOOK_SECRET (fail-closed)", () => {
     const { WEBHOOK_SECRET, ...semSecret } = baseUazapi;

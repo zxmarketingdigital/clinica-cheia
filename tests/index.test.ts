@@ -1,5 +1,5 @@
 import { it, expect } from "vitest";
-import worker, { agentesParaHora } from "../src/index";
+import worker, { agentesParaHora, horaNoFuso } from "../src/index";
 
 it("/health responde 200", async () => {
   const res = await worker.fetch(new Request("https://x/health"), {} as any, {} as any);
@@ -15,6 +15,11 @@ it("agentesParaHora mapeia as horas certas", () => {
   expect(agentesParaHora(10)).toContain("lembrete-retorno");
   expect(agentesParaHora(9)).toContain("reativador");
   expect(agentesParaHora(3)).toEqual([]);
+});
+it("hora usada pelo scheduled respeita o fuso configurado", () => {
+  const agora = new Date("2026-06-04T12:00:00Z");
+  expect(horaNoFuso(agora, "Europe/Lisbon")).toBe(13);
+  expect(horaNoFuso(agora, "America/Sao_Paulo")).toBe(9);
 });
 it("POST /webhook com token errado retorna 401", async () => {
   const req = new Request("https://x/webhook?token=errado", { method: "POST", body: "{}" });
