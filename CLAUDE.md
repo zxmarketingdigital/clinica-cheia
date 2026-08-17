@@ -32,22 +32,32 @@
 | Procedimentos, duração, preço, cadência de retorno | **banco** (tabela `procedimentos`) ou `src/niche/clinica-estetica.ts` para os defaults do seed |
 | Moeda / formato de valor (€, US$) | `painel/app.js` — a formatação é `toLocaleString('pt-BR', { currency: 'BRL' })`. **Fora de `src/`** |
 | Textos e tom das mensagens dos agentes | prompts em `src/` |
-| Fuso horário (clínica fora do Brasil) | `src/lib/tempo.ts` — **leia o aviso abaixo antes** |
+| Fuso horário (clínica fora do Brasil) | `TIMEZONE` no `.env` — **leia abaixo antes** |
 
-### ⚠️ Trocar o fuso horário: são DOIS pontos, não um
+### 🌍 Trocar o fuso horário (a partir da v1.0.3: é só uma variável)
 
-Em `src/lib/tempo.ts` o fuso aparece duas vezes e **mudar só o primeiro deixa o sistema silenciosamente
-errado** (os disparos saem na hora errada, sem erro nenhum no log):
+Desde a `v1.0.3` (17/Ago/26) o fuso é configurável por `TIMEZONE` no `.env` — Zod valida que é um
+identificador IANA real (ex: `Europe/Lisbon`) no `parseConfig`, e o offset UTC (inclusive DST) é
+calculado dinamicamente via `Intl`, não hardcoded. Pra atender um cliente fora do Brasil:
 
-1. `const TZ = "America/Sao_Paulo"` → troque pelo fuso do cliente (ex: `"Europe/Lisbon"`).
-2. `const offsetMs = 3 * 60 * 60 * 1000` → este é um offset **fixo de UTC-3**, escrito à mão e **não
-   derivado do `TZ`**. Para outro fuso ele precisa ser recalculado, **com o sinal invertido em relação ao
-   Brasil**: Lisboa é UTC+0 (ou +1 no verão europeu), então o valor vira `0` ou `-1 * 60 * 60 * 1000`.
-   Ele aparece em `janelaDiaSeguinte` **e** em `janelaDiaAnterior` — corrija nos dois.
+1. Adicione/edite `TIMEZONE=Europe/Lisbon` (ou o fuso do cliente) no `.env`.
+2. Rode `pnpm test` — os testes de fuso continuam verdes porque a suíte testa o comportamento
+   PARAMETRIZADO por `TIMEZONE`, não mais um valor fixo de Brasília.
+3. Não precisa tocar em `src/lib/tempo.ts` nem em `src/index.ts` — é só config.
 
-Os testes em `tests/tempo.test.ts` fixam as janelas em horário de Brasília: ao trocar o fuso eles vão
-**falhar, e isso é esperado** — atualize as expectativas para o novo fuso em vez de reverter a mudança.
-Diga isso ao aluno antes de começar, pra ele não achar que você quebrou o produto.
+**Se o repositório do aluno for de uma versão anterior à `v1.0.3`** (`git tag` não mostra `v1.0.3`+),
+o fuso ainda está hardcoded em TRÊS pontos e a correção é editar código — oriente-o a atualizar
+primeiro (`git fetch --tags && git checkout v1.0.3`), que resolve isso sem editar `src/` nenhum. Só
+mexa nos três pontos manualmente se ele quiser continuar preso à versão antiga por algum motivo:
+
+1. `src/lib/tempo.ts` → `const TZ = "America/Sao_Paulo"`.
+2. `src/lib/tempo.ts` → `const offsetMs = 3 * 60 * 60 * 1000` (offset fixo de UTC-3, em
+   `janelaDiaSeguinte` **e** `janelaDiaAnterior`).
+3. `src/index.ts` → literal próprio de `"America/Sao_Paulo"`, separado do `tempo.ts`, que decide a
+   hora local do cron (`agentesParaHora`).
+
+Foi um aluno de Portugal quem reportou os três pontos (17/Ago/26) — antes disso o guia só falava em
+dois, e o `src/index.ts` ficava esquecido mesmo depois de "corrigir" o `tempo.ts`.
 
 ### O custo real de editar `src/` — diga isso, não use como desculpa
 
