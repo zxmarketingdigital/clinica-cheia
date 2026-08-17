@@ -22,7 +22,7 @@ export async function runReativador(ctx: ReativadorCtx): Promise<void> {
     }
   }
 
-  const ontem = await ctx.agenda.realizadosOntem(ctx.agora.toISOString());
+  const ontem = await ctx.agenda.realizadosOntem(ctx.agora.toISOString(), ctx.timezone);
   for (const o of ontem) {
     try {
       if (await ctx.agenda.jaPediuAvaliacao(o.cliente.telefone)) continue;

@@ -1,5 +1,6 @@
 import { it, expect } from "vitest";
 import { janelaDiaSeguinte, janelaDiaAnterior, formatarQuando, paraUTC } from "../src/lib/tempo";
+import { parseConfig } from "../src/config";
 
 it("janelaDiaSeguinte cobre o dia seguinte em BRT", () => {
   const { de, ate } = janelaDiaSeguinte(new Date("2026-06-03T12:00:00Z"));
@@ -19,6 +20,33 @@ it("janelaDiaAnterior cobre o dia anterior em BRT", () => {
   // 02/06 00:00 BRT = 02/06 03:00 UTC ; 02/06 23:59:59.999 BRT = 03/06 02:59:59.999 UTC
   expect(de).toBe("2026-06-02T03:00:00.000Z");
   expect(ate).toBe("2026-06-03T02:59:59.999Z");
+});
+
+it("calcula janelas em Europe/Lisbon com UTC+1 no verão e UTC+0 no inverno", () => {
+  const timezone = parseConfig({
+    CLINICA_NOME: "Bella",
+    WHATSAPP_PROVIDER: "uazapi",
+    UAZAPI_URL: "https://x",
+    UAZAPI_TOKEN: "t",
+    SUPABASE_URL: "https://s",
+    SUPABASE_SERVICE_KEY: "k",
+    GEMINI_API_KEY: "g",
+    GOOGLE_REVIEW_LINK: "https://r",
+    WEBHOOK_SECRET: "x".repeat(32),
+    TIMEZONE: "Europe/Lisbon",
+  }).timezone;
+
+  const verao = janelaDiaSeguinte(new Date("2026-06-03T12:00:00Z"), timezone);
+  expect(verao).toEqual({
+    de: "2026-06-03T23:00:00.000Z",
+    ate: "2026-06-04T22:59:59.999Z",
+  });
+
+  const inverno = janelaDiaSeguinte(new Date("2026-01-15T12:00:00Z"), timezone);
+  expect(inverno).toEqual({
+    de: "2026-01-16T00:00:00.000Z",
+    ate: "2026-01-16T23:59:59.999Z",
+  });
 });
 
 // FIX UTC normalização — paraUTC converte offset local para UTC puro

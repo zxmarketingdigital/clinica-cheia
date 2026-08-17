@@ -19,3 +19,20 @@ it("agendamentosParaConfirmar filtra por janela e status agendado", async () => 
   expect(c.from).toHaveBeenCalledWith("agendamentos");
   expect(out).toHaveLength(1);
 });
+
+it("procedimentoPorNome ignora maiúsculas, espaços e acentos", async () => {
+  const procedimento = { id: "p1", nome: "Avaliação facial", duracao_min: 60 };
+  const a = new Agenda(fakeClient([procedimento]));
+  await expect(a.procedimentoPorNome("  avaliacao FACIAL  ")).resolves.toEqual(procedimento);
+});
+
+it("procedimentoPorNome retorna null e avisa quando não encontra", async () => {
+  const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const a = new Agenda(fakeClient([{ id: "p1", nome: "Botox" }]));
+    await expect(a.procedimentoPorNome("Limpeza de pele")).resolves.toBeNull();
+    expect(aviso).toHaveBeenCalledWith("[agenda] procedimento não encontrado para:", "Limpeza de pele");
+  } finally {
+    aviso.mockRestore();
+  }
+});

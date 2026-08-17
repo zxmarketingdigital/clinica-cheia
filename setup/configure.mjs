@@ -93,7 +93,7 @@ window.CLINICA_CONFIG = {
 // Wizard
 // ---------------------------------------------------------------------------
 
-/** @typedef {{ key: string; label: string; hint: string; comment?: string }} Campo */
+/** @typedef {{ key: string; label: string; hint: string; comment?: string; defaultValue?: string }} Campo */
 
 /** @type {Campo[]} */
 const CAMPOS_ENV = [
@@ -101,6 +101,13 @@ const CAMPOS_ENV = [
     key: "CLINICA_NOME",
     label: "Nome da clínica",
     hint: "Ex: Clínica Bella — aparece nas mensagens e no painel.",
+  },
+  {
+    key: "TIMEZONE",
+    label: "Fuso horário da clínica",
+    hint: "IANA, ex: America/Sao_Paulo ou Europe/Lisbon.",
+    defaultValue: "America/Sao_Paulo",
+    comment: "Fuso horário IANA usado nos cron e na agenda",
   },
   {
     key: "SUPABASE_URL",
@@ -156,6 +163,7 @@ const ENV_APENAS = new Set([
   "GEMINI_API_KEY",
   "UAZAPI_URL",
   "UAZAPI_TOKEN",
+  "TIMEZONE",
   "WHATSAPP_PROVIDER",
   "GOOGLE_REVIEW_LINK",
 ]);
@@ -168,11 +176,15 @@ const ENV_APENAS = new Set([
  * @returns {Promise<string>}
  */
 async function perguntar(rl, campo, valorAtual) {
-  const padrao = valorAtual ? ` [atual: ${valorAtual.length > 60 ? valorAtual.slice(0, 57) + "..." : valorAtual}]` : "";
+  const padrao = valorAtual
+    ? ` [atual: ${valorAtual.length > 60 ? valorAtual.slice(0, 57) + "..." : valorAtual}]`
+    : campo.defaultValue
+    ? ` [padrão: ${campo.defaultValue}]`
+    : "";
   const resposta = await rl.question(`  ${campo.label}${padrao}\n  (${campo.hint})\n  > `);
   const limpa = resposta.trim();
   if (limpa === "" && valorAtual) return valorAtual;
-  return limpa;
+  return limpa || campo.defaultValue || "";
 }
 
 // ---------------------------------------------------------------------------

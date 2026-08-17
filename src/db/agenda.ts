@@ -2,6 +2,16 @@ import type { Agendamento, Cliente, Procedimento } from "./types";
 import { cadenciaVencida } from "../lib/cadencia";
 import type { CadenciaVencida } from "../lib/cadencia";
 import { janelaDiaAnterior, paraUTC } from "../lib/tempo";
+import { DEFAULT_TIMEZONE } from "../config";
+
+function normalizarNomeProcedimento(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("pt-BR");
+}
 
 export class Agenda {
   constructor(private db: any) {}
@@ -51,9 +61,24 @@ export class Agenda {
   }
 
   async procedimentoPorNome(nome: string): Promise<Procedimento | null> {
-    const { data, error } = await this.db.from("procedimentos").select("*").eq("nome", nome).maybeSingle();
+    const { data, error } = await this.db.from("procedimentos").select("*");
     if (error) throw error;
-    return data ?? null;
+    const recebido = normalizarNomeProcedimento(nome);
+    const matches = (data ?? []).filter((p: Procedimento) => normalizarNomeProcedimento(p.nome) === recebido);
+    if (matches.length === 1) return matches[0];
+
+    if (matches.length === 0) {
+      console.warn("[agenda] procedimento não encontrado para:", nome);
+    } else {
+      console.warn("[agenda] procedimento ambíguo para:", nome, "candidatos:", matches.map((p: Procedimento) => p.nome));
+    }
+    return null;
+  }
+
+  async listarProcedimentos(): Promise<Procedimento[]> {
+    const { data, error } = await this.db.from("procedimentos").select("*");
+    if (error) throw error;
+    return data ?? [];
   }
 
   async clientePorId(id: string): Promise<Cliente> {
@@ -192,10 +217,10 @@ export class Agenda {
 
   /**
    * Agendamentos com status "realizado" cuja janela de início cobre o dia
-   * ANTERIOR a agoraISO em BRT. Usa import estático de janelaDiaAnterior.
+   * ANTERIOR a agoraISO no fuso configurado. Usa import estático de janelaDiaAnterior.
    */
-  async realizadosOntem(agoraISO: string) {
-    const { de, ate } = janelaDiaAnterior(new Date(agoraISO));
+  async realizadosOntem(agoraISO: string, timezone = DEFAULT_TIMEZONE) {
+    const { de, ate } = janelaDiaAnterior(new Date(agoraISO), timezone);
     const { data, error } = await this.db
       .from("agendamentos")
       .select("clientes(nome,telefone)")

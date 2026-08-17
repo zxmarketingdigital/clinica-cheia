@@ -1,18 +1,20 @@
 /**
- * Helpers de tempo para o fuso America/Sao_Paulo (BRT = UTC-3).
+ * Helpers de tempo para o fuso configurado pela clínica.
  *
- * Estratégia: usamos Intl.DateTimeFormat com timeZone "America/Sao_Paulo"
- * para extrair as partes de data no fuso correto, depois montamos os
- * instantes UTC manualmente. Isso é robusto ao horário de verão (quando
- * o Brasil eventualmente reintroduzir), diferente de um offset fixo -3.
+ * Estratégia: usamos Intl.DateTimeFormat com o timeZone configurado para
+ * extrair as partes de data no fuso correto, depois montamos os instantes
+ * UTC manualmente. O offset é obtido do próprio Intl em cada limite da
+ * janela, então horários de verão e fusos fora do Brasil são respeitados.
  */
 
-const TZ = "America/Sao_Paulo";
+import { DEFAULT_TIMEZONE } from "../config";
 
-/** Retorna as partes de data/hora de um instante no fuso BRT. */
-function partsBRT(d: Date): { year: number; month: number; day: number; hour: number } {
+type Timezone = string;
+
+/** Retorna as partes de data/hora de um instante no fuso configurado. */
+function partsLocal(d: Date, timezone: Timezone): { year: number; month: number; day: number; hour: number } {
   const fmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
+    timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -24,51 +26,76 @@ function partsBRT(d: Date): { year: number; month: number; day: number; hour: nu
   return { year: get("year"), month: get("month"), day: get("day"), hour: get("hour") };
 }
 
+/** Converte o valor GMT/UTC retornado por Intl em milissegundos. */
+function offsetDoFuso(d: Date, timezone: Timezone): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    timeZoneName: "shortOffset",
+  }).formatToParts(d);
+  const nome = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT";
+  const match = nome.match(/^(?:GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?$/);
+  if (!match) return 0;
+  const horas = Number(match[2]);
+  const minutos = Number(match[3] ?? "0");
+  const sinal = match[1] === "+" ? 1 : -1;
+  return sinal * (horas * 60 + minutos) * 60 * 1000;
+}
+
+/** Converte um relógio local representado artificialmente em UTC. */
+function localParaUTC(local: Date, timezone: Timezone): Date {
+  // O offset positivo representa quanto o relógio local está à frente do UTC;
+  // por isso ele é subtraído do relógio local para obter o instante.
+  let offsetMs = offsetDoFuso(local, timezone);
+  let utcMs = local.getTime() - offsetMs;
+
+  // Recalcula no instante candidato para cobrir transições de horário de verão
+  // próximas ao limite da janela.
+  offsetMs = offsetDoFuso(new Date(utcMs), timezone);
+  utcMs = local.getTime() - offsetMs;
+  return new Date(utcMs);
+}
+
 /**
  * Retorna o início (00:00:00.000) e fim (23:59:59.999) do DIA SEGUINTE
- * em horário de Brasília, como strings ISO 8601 em UTC.
+ * no fuso configurado, como strings ISO 8601 em UTC.
  *
  * Exemplo: agora = 2026-06-03T12:00:00Z
  *   dia seguinte BRT = 04/06/2026
  *   de  = 2026-06-04T03:00:00.000Z  (04/06 00:00 BRT)
  *   ate = 2026-06-05T02:59:59.999Z  (04/06 23:59:59.999 BRT)
  */
-export function janelaDiaSeguinte(agora: Date): { de: string; ate: string } {
-  const { year, month, day } = partsBRT(agora);
+export function janelaDiaSeguinte(agora: Date, timezone = DEFAULT_TIMEZONE): { de: string; ate: string } {
+  const { year, month, day } = partsLocal(agora, timezone);
 
-  // Dia seguinte em BRT: incrementamos o dia e deixamos o Date normalizar
+  // Dia seguinte no fuso local: incrementamos o dia e deixamos o Date normalizar
   // (evita cálculo manual de fim de mês / ano).
   const startBRT = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0, 0));
   const endBRT   = new Date(Date.UTC(year, month - 1, day + 1, 23, 59, 59, 999));
 
-  // BRT = UTC - 3h → para converter "meia-noite BRT" para UTC somamos 3h
-  const offsetMs = 3 * 60 * 60 * 1000; // +3h
-  const de  = new Date(startBRT.getTime() + offsetMs);
-  const ate = new Date(endBRT.getTime()   + offsetMs);
+  const de = localParaUTC(startBRT, timezone);
+  const ate = localParaUTC(endBRT, timezone);
 
   return { de: de.toISOString(), ate: ate.toISOString() };
 }
 
 /**
  * Retorna o início (00:00:00.000) e fim (23:59:59.999) do DIA ANTERIOR
- * em horário de Brasília, como strings ISO 8601 em UTC.
+ * no fuso configurado, como strings ISO 8601 em UTC.
  *
  * Exemplo: agora = 2026-06-03T12:00:00Z
  *   dia anterior BRT = 02/06/2026
  *   de  = 2026-06-02T03:00:00.000Z  (02/06 00:00 BRT)
  *   ate = 2026-06-03T02:59:59.999Z  (02/06 23:59:59.999 BRT)
  */
-export function janelaDiaAnterior(agora: Date): { de: string; ate: string } {
-  const { year, month, day } = partsBRT(agora);
+export function janelaDiaAnterior(agora: Date, timezone = DEFAULT_TIMEZONE): { de: string; ate: string } {
+  const { year, month, day } = partsLocal(agora, timezone);
 
-  // Dia anterior em BRT: decrementamos o dia e deixamos o Date normalizar.
+  // Dia anterior no fuso local: decrementamos o dia e deixamos o Date normalizar.
   const startBRT = new Date(Date.UTC(year, month - 1, day - 1, 0, 0, 0, 0));
   const endBRT   = new Date(Date.UTC(year, month - 1, day - 1, 23, 59, 59, 999));
 
-  // BRT = UTC - 3h → para converter "meia-noite BRT" para UTC somamos 3h
-  const offsetMs = 3 * 60 * 60 * 1000; // +3h
-  const de  = new Date(startBRT.getTime() + offsetMs);
-  const ate = new Date(endBRT.getTime()   + offsetMs);
+  const de = localParaUTC(startBRT, timezone);
+  const ate = localParaUTC(endBRT, timezone);
 
   return { de: de.toISOString(), ate: ate.toISOString() };
 }
@@ -83,19 +110,19 @@ export function paraUTC(iso: string): string {
 }
 
 /**
- * Formata um instante ISO para uma string curta legível em PT-BR no fuso BRT.
+ * Formata um instante ISO para uma string curta legível no fuso configurado.
  * Exemplo: "2026-06-04T17:00:00Z" → "04/06 às 14h"
  */
-export function formatarQuando(iso: string): string {
+export function formatarQuando(iso: string, timezone = DEFAULT_TIMEZONE): string {
   const d = new Date(iso);
 
   const dateFmt = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: TZ,
+    timeZone: timezone,
     day: "2-digit",
     month: "2-digit",
   });
   const hourFmt = new Intl.DateTimeFormat("pt-BR", {
-    timeZone: TZ,
+    timeZone: timezone,
     hour: "numeric",
     hour12: false,
   });
