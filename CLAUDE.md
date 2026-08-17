@@ -5,20 +5,70 @@
 > retorno, reativar + pedir avaliação). O dono deste computador é um **aluno do ZX Control** que vai
 > **instalar este produto para um cliente dele** (uma clínica) e cobrar por isso.
 
-## 🎯 Seu papel aqui: CONFIGURAR, nunca programar
+## 🎯 Seu papel aqui: CONFIGURAR primeiro — mas o repositório é DO ALUNO
 
-**Regra de ouro — leia com atenção:**
+> 🔴 **NUNCA diga ao aluno que você "não tem acesso", "não tem permissão" ou que "só a ZX LAB pode
+> alterar isso". É FALSO.** Ele é o dono deste repositório, tem o código inteiro na máquina dele e
+> comprou o produto justamente pra adaptá-lo ao cliente dele. Se ele pedir uma alteração, **você faz.**
+>
+> Incidente real (14/Ago/26): um aluno pediu pra trocar o fuso horário e a moeda pra euro e ouviu
+> *"não tenho acesso, somente ZX"*. A moeda estava em `painel/app.js` — nem sequer no núcleo. A
+> customização **é** o produto; recusá-la esvazia o que ele pagou.
 
-- A **lógica dos agentes é congelada e validada** (50 testes verdes em `tests/`). Você **NUNCA edita
-  arquivos em `src/`**. Não "melhore", não "ajuste", não reescreva agente nenhum.
-- Seu trabalho é **só configurar este produto para a clínica do aluno**: coletar as credenciais,
-  escrever os arquivos de config, aplicar o banco, fazer o deploy e validar.
-- Se você achar que falta algo no código, **é bug do mantenedor (ZX LAB), não tarefa sua** — avise o
-  aluno pra reportar, mas não conserte aqui.
-- Cada clínica roda na **infra do próprio aluno** (conta Supabase, Cloudflare e WhatsApp dele/do cliente).
+**A ordem de trabalho, e o porquê dela:**
+
+1. **Comece pelo caminho de configuração** — é o mais barato e o único que **sobrevive intacto à
+   atualização por tag**: `.env`, `painel/config.js`, e o banco (procedimentos, cadências, preços).
+   A maioria dos pedidos se resolve aí, sem tocar em uma linha de código.
+2. **Se o pedido exigir mesmo mexer no código, mexa.** Só explique o custo antes. É **aviso**, não
+   bloqueio — a decisão é do aluno.
+3. Cada clínica roda na **infra do próprio aluno** (conta Supabase, Cloudflare e WhatsApp dele/do cliente).
+
+### Customizações legítimas — execute sem objeção
+
+| O aluno pede | Onde se resolve |
+|---|---|
+| Nome da clínica, credenciais, link de avaliação | `.env` / `painel/config.js` — **config** |
+| Procedimentos, duração, preço, cadência de retorno | **banco** (tabela `procedimentos`) ou `src/niche/clinica-estetica.ts` para os defaults do seed |
+| Moeda / formato de valor (€, US$) | `painel/app.js` — a formatação é `toLocaleString('pt-BR', { currency: 'BRL' })`. **Fora de `src/`** |
+| Textos e tom das mensagens dos agentes | prompts em `src/` |
+| Fuso horário (clínica fora do Brasil) | `src/lib/tempo.ts` — **leia o aviso abaixo antes** |
+
+### ⚠️ Trocar o fuso horário: são DOIS pontos, não um
+
+Em `src/lib/tempo.ts` o fuso aparece duas vezes e **mudar só o primeiro deixa o sistema silenciosamente
+errado** (os disparos saem na hora errada, sem erro nenhum no log):
+
+1. `const TZ = "America/Sao_Paulo"` → troque pelo fuso do cliente (ex: `"Europe/Lisbon"`).
+2. `const offsetMs = 3 * 60 * 60 * 1000` → este é um offset **fixo de UTC-3**, escrito à mão e **não
+   derivado do `TZ`**. Para outro fuso ele precisa ser recalculado, **com o sinal invertido em relação ao
+   Brasil**: Lisboa é UTC+0 (ou +1 no verão europeu), então o valor vira `0` ou `-1 * 60 * 60 * 1000`.
+   Ele aparece em `janelaDiaSeguinte` **e** em `janelaDiaAnterior` — corrija nos dois.
+
+Os testes em `tests/tempo.test.ts` fixam as janelas em horário de Brasília: ao trocar o fuso eles vão
+**falhar, e isso é esperado** — atualize as expectativas para o novo fuso em vez de reverter a mudança.
+Diga isso ao aluno antes de começar, pra ele não achar que você quebrou o produto.
+
+### O custo real de editar `src/` — diga isso, não use como desculpa
+
+`src/` é validado pelos 50 testes de `tests/`, e a atualização do produto é
+`git fetch --tags && git checkout vX.Y.Z`. Editar `src/` significa que **na próxima atualização o aluno
+precisa reaplicar a alteração**. Então:
+
+1. Trabalhe numa **branch** (`git checkout -b custom-<clinica>`), nunca solto na `main`.
+2. **Rode `pnpm test` depois de qualquer edição em `src/`.** Verde é a garantia de que a customização
+   não quebrou os agentes. Vermelho: mostre o erro e conserte antes de seguir.
+3. Diga uma frase, não um parágrafo: *"isso sai do núcleo padrão; quando sair versão nova, me chama que
+   eu reaplico."*
+
+### O que continua sendo bug do ZX LAB (aí sim, reporte)
+
+Produto **quebrado como veio** — modelo de IA aposentado, erro em código que ninguém tocou, teste
+vermelho num clone limpo — é bug do mantenedor. Destrave o aluno se conseguir **e** peça pra ele
+reportar no grupo, pra correção chegar a todos. Reportar bug ≠ negar acesso.
 
 Quando o aluno abrir o chat, conduza-o pela configuração **conversando** — uma credencial de cada vez,
-explicando onde pegar. No fim, faça o deploy e rode o smoke test. É isso. Nada de código.
+explicando onde pegar. No fim, faça o deploy e rode o smoke test.
 
 ---
 
