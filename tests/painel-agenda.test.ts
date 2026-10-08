@@ -117,10 +117,12 @@ describe("resposta atrasada não sobrescreve a mais nova", () => {
       expect(ini).toBeGreaterThan(-1);
       const fim = app.indexOf("\n}\n", ini);
       const corpo = app.slice(ini, fim);
-      const awaits = (corpo.match(/\bawait\b/g) ?? []).length;
-      const guardas = (corpo.match(/\.atual\(token\)\) return;|!procs\.atual\) return;/g) ?? []).length;
-      expect(awaits, fn).toBeGreaterThan(0);
-      expect(guardas, fn).toBe(awaits);
+      // eventos em ordem de aparição: todo await tem que ser seguido de uma guarda antes do próximo await
+      const eventos = [...corpo.matchAll(/\bawait\b|\.atual\(token\)\) return;|!procs\.atual\) return;/g)]
+        .map((m) => (m[0] === "await" ? "await" : "guarda"));
+      expect(eventos.length, fn).toBeGreaterThan(0);
+      expect(eventos.length % 2, fn).toBe(0);
+      eventos.forEach((e, i) => expect(e, `${fn} #${i}`).toBe(i % 2 === 0 ? "await" : "guarda"));
     }
   });
   it("o app.js confere o token depois de cada await das cinco telas", () => {
