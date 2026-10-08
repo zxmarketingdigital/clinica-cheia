@@ -111,6 +111,18 @@ describe("resposta atrasada não sobrescreve a mais nova", () => {
     await Promise.all([render("dia-1", 30), render("dia-2", 1)]);
     expect(tela).toBe("dia-2");
   });
+  it("cada await de cada tela é seguido de uma guarda (nº de awaits = nº de guardas)", () => {
+    for (const fn of ["renderAgenda", "renderClientes", "renderProcedimentos", "renderEspera", "renderMensagens"]) {
+      const ini = app.indexOf(`async function ${fn}()`);
+      expect(ini).toBeGreaterThan(-1);
+      const fim = app.indexOf("\n}\n", ini);
+      const corpo = app.slice(ini, fim);
+      const awaits = (corpo.match(/\bawait\b/g) ?? []).length;
+      const guardas = (corpo.match(/\.atual\(token\)\) return;|!procs\.atual\) return;/g) ?? []).length;
+      expect(awaits, fn).toBeGreaterThan(0);
+      expect(guardas, fn).toBe(awaits);
+    }
+  });
   it("o app.js confere o token depois de cada await das cinco telas", () => {
     for (const nome of ["Agenda", "Clientes", "Procedimentos", "Espera", "Mensagens"]) {
       expect(app).toContain(`const token = seq${nome}.nova();`);
