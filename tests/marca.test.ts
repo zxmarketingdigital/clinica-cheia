@@ -209,6 +209,10 @@ describe(".env: ida e volta sem perda", () => {
       expect(env.OUTRO).toBe("ok");
     });
   }
+  it("preserva barra invertida que não escapa nada", () => {
+    expect(parseEnv('T="ab\\cd"').T).toBe("ab\\cd");
+    expect(parseEnv('T="C:\\dir\\x"').T).toBe("C:\\dir\\x");
+  });
   it("lê formato legado sem aspas e comentário inline", () => {
     expect(parseEnv("TIMEZONE=America/Sao_Paulo  # fuso\n# c\nA='x y'\n").TIMEZONE).toBe("America/Sao_Paulo");
     expect(parseEnv("A='x y'").A).toBe("x y");

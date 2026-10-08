@@ -31,7 +31,7 @@ export function parseEnv(conteudo) {
       let i = 1;
       let out = "";
       while (i < resto.length && resto[i] !== '"') {
-        if (resto[i] === "\\" && i + 1 < resto.length) i++;
+        if (resto[i] === "\\" && (resto[i + 1] === "\\" || resto[i + 1] === '"')) i++;
         out += resto[i++];
       }
       valor = out;
