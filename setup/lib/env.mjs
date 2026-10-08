@@ -6,6 +6,7 @@
 
 /** @param {string} valor */
 export function formatarValorEnv(valor) {
+  valor = valor.replace(/[\r\n]+/g, " "); // .env é uma linha por chave
   const precisaAspas = /[#"\\]/.test(valor) || valor !== valor.trim();
   if (!precisaAspas) return valor;
   return `"${valor.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;

@@ -109,6 +109,7 @@ window.CLINICA_CONFIG = {
  */
 function gravarAtomico(destino, gravar) {
   const tmp = `${destino}.tmp-${process.pid}`;
+  try { unlinkSync(tmp); } catch { /* sobra de execução interrompida, se houver */ }
   try {
     gravar(tmp);
     renameSync(tmp, destino);
@@ -360,7 +361,8 @@ async function main() {
     }
   }
 
-  gravarAtomico(envPath, (tmp) => writeFileSync(tmp, serializarEnv(config, ordemFinal), "utf8"));
+  // .env guarda chaves: 0600, e o temporário é recriado do zero (flag "wx") para o modo valer.
+  gravarAtomico(envPath, (tmp) => writeFileSync(tmp, serializarEnv(config, ordemFinal), { encoding: "utf8", mode: 0o600, flag: "wx" }));
   console.log(`✅  .env gravado em ${envPath}`);
 
   // Gravar painel/config.js

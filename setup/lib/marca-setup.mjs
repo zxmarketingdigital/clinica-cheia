@@ -49,7 +49,7 @@ export function validarCor(entrada, { obrigatoria = false } = {}) {
 export function validarNome(entrada) {
   const v = (entrada ?? "").trim();
   if (!v) return { ok: false, erro: "O nome da clínica é obrigatório." };
-  return { ok: true, valor: v };
+  return { ok: true, valor: v.replace(/\s*[\r\n]+\s*/g, " ") };
 }
 
 /**
