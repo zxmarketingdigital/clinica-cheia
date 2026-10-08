@@ -39,6 +39,7 @@ const seqClientes = criarSequencia();
 const seqProcedimentos = criarSequencia();
 const seqEspera = criarSequencia();
 const seqMensagens = criarSequencia();
+const seqCacheProc = criarSequencia();   // compartilhada: só a consulta de procedimentos mais nova grava o cache
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 function todayISO() {
@@ -190,12 +191,15 @@ function renderTab(tab) {
 
 // ─── Procedimentos cache ──────────────────────────────────────────────────────
 async function loadProcedimentosCache(seq, token) {
+  const tokenCache = seqCacheProc.nova();
   const { data, error } = await sb.from('procedimentos').select('id,nome');
-  if (!seq.atual(token)) return { atual: false, error: null };   // resposta obsoleta não toca o cache compartilhado
-  if (error || !data) return { atual: true, error: error ?? { message: 'sem resposta' } };
-  procedimentosCache = {};
-  data.forEach(p => { procedimentosCache[p.id] = p.nome; });
-  return { atual: true, error: null };
+  if (!seq.atual(token)) return { atual: false, error: null, mapa: {} };   // tela já foi refeita
+  if (error || !data) return { atual: true, error: error ?? { message: 'sem resposta' }, mapa: {} };
+  const mapa = {};
+  data.forEach(p => { mapa[p.id] = p.nome; });
+  // a tela usa o mapa da própria resposta; o cache global só aceita a consulta mais nova de qualquer tela
+  if (seqCacheProc.atual(tokenCache)) procedimentosCache = mapa;
+  return { atual: true, error: null, mapa };
 }
 
 // ─── AGENDA DO DIA ────────────────────────────────────────────────────────────
@@ -242,7 +246,7 @@ async function renderAgenda() {
     return;
   }
 
-  list.innerHTML = data.map(ag => agendaCardHtml(ag)).join('');
+  list.innerHTML = data.map(ag => agendaCardHtml(ag, procs.mapa)).join('');
 
   // attach action buttons
   list.querySelectorAll('[data-action]').forEach(btn => {
@@ -250,10 +254,10 @@ async function renderAgenda() {
   });
 }
 
-function agendaCardHtml(ag) {
+function agendaCardHtml(ag, procs) {
   const nome = ag.clientes?.nome ?? '—';
   const tel  = ag.clientes?.telefone ?? '';
-  const proc = procedimentosCache[ag.procedimento_id] ?? 'Procedimento não informado';
+  const proc = procs[ag.procedimento_id] ?? 'Procedimento não informado';
   const hora = fmtTime(ag.inicio);
   const isTerminal = ag.status === 'realizado' || ag.status === 'cancelado' || ag.status === 'faltou';
 
@@ -560,7 +564,7 @@ async function renderEspera() {
   list.innerHTML = data.map(item => {
     const nome = item.clientes?.nome ?? '—';
     const tel  = item.clientes?.telefone ?? '';
-    const proc = procedimentosCache[item.procedimento_id] ?? '—';
+    const proc = procs.mapa[item.procedimento_id] ?? '—';
     return `
       <div class="list-item">
         <div>

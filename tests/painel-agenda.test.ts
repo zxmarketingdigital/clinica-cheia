@@ -122,6 +122,10 @@ describe("resposta atrasada não sobrescreve a mais nova", () => {
     expect((app.match(/if \(!procs\.atual\) return;/g) ?? []).length).toBe(2);
     expect((app.match(/if \(procs\.error\) \{/g) ?? []).length).toBe(2);   // falha do cache aparece, não vira "sem nome"
     expect(app).toMatch(/if \(!seq\.atual\(token\)\) return \{ atual: false/);
+    // o cache global só aceita a consulta de procedimentos mais nova entre TODAS as telas
+    expect(app).toContain("if (seqCacheProc.atual(tokenCache)) procedimentosCache = mapa;");
+    expect(app).toContain("agendaCardHtml(ag, procs.mapa)");
+    expect(app).toContain("procs.mapa[item.procedimento_id]");
     expect(app).not.toContain("await loadProcedimentosCache();");
   });
 });
