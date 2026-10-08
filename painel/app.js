@@ -190,13 +190,12 @@ function renderTab(tab) {
 
 // ─── Procedimentos cache ──────────────────────────────────────────────────────
 async function loadProcedimentosCache(seq, token) {
-  const { data } = await sb.from('procedimentos').select('id,nome');
-  if (!seq.atual(token)) return false;   // resposta obsoleta não toca o cache compartilhado
-  if (data) {
-    procedimentosCache = {};
-    data.forEach(p => { procedimentosCache[p.id] = p.nome; });
-  }
-  return true;
+  const { data, error } = await sb.from('procedimentos').select('id,nome');
+  if (!seq.atual(token)) return { atual: false, error: null };   // resposta obsoleta não toca o cache compartilhado
+  if (error || !data) return { atual: true, error: error ?? { message: 'sem resposta' } };
+  procedimentosCache = {};
+  data.forEach(p => { procedimentosCache[p.id] = p.nome; });
+  return { atual: true, error: null };
 }
 
 // ─── AGENDA DO DIA ────────────────────────────────────────────────────────────
@@ -211,7 +210,12 @@ async function renderAgenda() {
   const list = document.getElementById('agenda-list');
   list.innerHTML = loadingHtml();
 
-  if (!(await loadProcedimentosCache(seqAgenda, token))) return;
+  const procs = await loadProcedimentosCache(seqAgenda, token);
+  if (!procs.atual) return;
+  if (procs.error) {
+    list.innerHTML = `<div class="empty" style="color:var(--red)">Erro ao carregar procedimentos: ${escHtml(procs.error.message)}</div>`;
+    return;
+  }
 
   // dia da agenda = [00:00, 24:00) no fuso da clínica, convertido para UTC
   const { de, ate } = janelaDia(dia, TZ);
@@ -522,7 +526,13 @@ async function renderEspera() {
   const list = document.getElementById('espera-list');
   list.innerHTML = loadingHtml();
 
-  if (!(await loadProcedimentosCache(seqEspera, token))) return;
+  const procs = await loadProcedimentosCache(seqEspera, token);
+  if (!procs.atual) return;
+  if (procs.error) {
+    document.getElementById('espera-count').textContent = '';
+    list.innerHTML = `<div class="empty" style="color:var(--red)">Erro ao carregar procedimentos: ${escHtml(procs.error.message)}</div>`;
+    return;
+  }
 
   const { data, error } = await sb
     .from('lista_espera')

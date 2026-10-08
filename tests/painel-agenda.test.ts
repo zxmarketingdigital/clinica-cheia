@@ -117,9 +117,11 @@ describe("resposta atrasada não sobrescreve a mais nova", () => {
       expect(app).toContain(`if (!seq${nome}.atual(token)) return;`);
     }
     // agenda e espera têm dois awaits: o cache de procedimentos (compartilhado) também confere o token
-    expect(app).toContain("if (!(await loadProcedimentosCache(seqAgenda, token))) return;");
-    expect(app).toContain("if (!(await loadProcedimentosCache(seqEspera, token))) return;");
-    expect(app).toMatch(/if \(!seq\.atual\(token\)\) return false;/);
+    expect(app).toContain("const procs = await loadProcedimentosCache(seqAgenda, token);");
+    expect(app).toContain("const procs = await loadProcedimentosCache(seqEspera, token);");
+    expect((app.match(/if \(!procs\.atual\) return;/g) ?? []).length).toBe(2);
+    expect((app.match(/if \(procs\.error\) \{/g) ?? []).length).toBe(2);   // falha do cache aparece, não vira "sem nome"
+    expect(app).toMatch(/if \(!seq\.atual\(token\)\) return \{ atual: false/);
     expect(app).not.toContain("await loadProcedimentosCache();");
   });
 });
