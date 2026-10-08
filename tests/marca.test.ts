@@ -218,6 +218,10 @@ describe(".env: ida e volta sem perda", () => {
     expect(env.K).toBe("Clínica Norte");
     expect(env.OUTRO).toBe("ok");
   });
+  it("logo com .. no nome e rejeitado", () => {
+    expect(validarLogoRef("logo..svg")).toBeNull();
+    expect(validarLogoRef("logo.svg")).toBe("logo.svg");
+  });
   it("lê formato legado sem aspas e comentário inline", () => {
     expect(parseEnv("TIMEZONE=America/Sao_Paulo  # fuso\n# c\nA='x y'\n").TIMEZONE).toBe("America/Sao_Paulo");
     expect(parseEnv("A='x y'").A).toBe("x y");

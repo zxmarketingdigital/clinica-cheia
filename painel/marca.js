@@ -111,7 +111,7 @@ export function validarLogoRef(valor) {
   const v = valor.trim();
   if (!v) return null;
   if (/^https:\/\/[^\s"'<>]+$/i.test(v)) return v;
-  if (/^[A-Za-z0-9][A-Za-z0-9._-]*\.(png|jpe?g|svg|webp)$/i.test(v)) return v;
+  if (!v.includes("..") && /^[A-Za-z0-9][A-Za-z0-9._-]*\.(png|jpe?g|svg|webp)$/i.test(v)) return v;
   return null;
 }
 
