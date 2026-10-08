@@ -97,7 +97,7 @@ window.CLINICA_CONFIG = {
 
 /**
  * @typedef {{ ok: true; valor: string } | { ok: false; erro: string }} Validacao
- * @typedef {{ key: string; label: string; hint: string; comment?: string; defaultValue?: string; validar?: (valor: string) => Validacao }} Campo
+ * @typedef {{ key: string; label: string; hint: string; comment?: string; defaultValue?: string; limpavel?: boolean; validar?: (valor: string) => Validacao }} Campo
  */
 
 /** Dependências de disco do validador de logo (a pasta painel/ é o destino da cópia). */
@@ -121,23 +121,26 @@ const CAMPOS_ENV = [
   {
     key: "COR_PRIMARIA",
     label: "Cor primária da marca (hex)",
-    hint: "Ex: #0F766E — botões, abas e destaques do painel. Enter usa o padrão ZX (âmbar).",
+    hint: "Ex: #0F766E — botões, abas e destaques do painel. Enter usa o padrão ZX (âmbar); digite - para voltar ao padrão.",
     comment: "Cor primária da marca da clínica (hex #RRGGBB)",
     defaultValue: COR_PADRAO,
+    limpavel: true,
     validar: (v) => validarCor(v, { obrigatoria: true }),
   },
   {
     key: "COR_SECUNDARIA",
     label: "Cor secundária (hex) — opcional",
-    hint: "Ex: #115E59. Enter deriva da cor primária.",
+    hint: "Ex: #115E59. Enter deriva da cor primária; digite - para apagar a cor salva.",
     comment: "Cor secundária (opcional; vazio = derivada da primária)",
+    limpavel: true,
     validar: (v) => validarCor(v),
   },
   {
     key: "LOGO",
     label: "Logo da clínica — opcional",
-    hint: "Caminho de um arquivo (png, jpg, svg, webp) ou URL https. Enter = sem logo, aparece só o nome.",
+    hint: "Caminho de um arquivo (png, jpg, svg, webp) ou URL https. Enter = sem logo, aparece só o nome; digite - para remover o logo salvo.",
     comment: "Logo: arquivo copiado para painel/ ou URL https (vazio = só o nome)",
+    limpavel: true,
     validar: (v) => validarLogo(v, DEPS_LOGO),
   },
   {
@@ -222,6 +225,8 @@ async function perguntar(rl, campo, valorAtual) {
   for (;;) {
     const resposta = await rl.question(`  ${campo.label}${padrao}\n  (${campo.hint})\n  > `);
     const limpa = resposta.trim();
+    // "-" apaga o valor salvo: campo opcional fica vazio, a cor primária volta ao padrão.
+    if (limpa === "-" && campo.limpavel) return campo.defaultValue || "";
     const escolhido = limpa === "" && valorAtual ? valorAtual : limpa || campo.defaultValue || "";
     if (!campo.validar) return escolhido;
     const r = campo.validar(escolhido);
