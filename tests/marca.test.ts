@@ -196,3 +196,21 @@ describe("wizard: validação de marca", () => {
     expect(limparCaminho("~/Downloads/a.png", "/home/aluno")).toBe("/home/aluno/Downloads/a.png");
   });
 });
+
+// @ts-ignore - mjs sem tipos
+import * as envLib from "../setup/lib/env.mjs";
+describe(".env: ida e volta sem perda", () => {
+  const { parseEnv, formatarValorEnv } = envLib as any;
+  const casos = ['Clínica "Bella" #1', "#0F766E", 'a\\b "c"', 'termina com \\', "  espaço  ", "https://g.page/r/x#frag", "simples", "", 'só "aspas"', "#"];
+  for (const v of casos) {
+    it(`preserva ${JSON.stringify(v)}`, () => {
+      const env = parseEnv(`K=${formatarValorEnv(v)}\nOUTRO=ok\n`);
+      expect(env.K).toBe(v);
+      expect(env.OUTRO).toBe("ok");
+    });
+  }
+  it("lê formato legado sem aspas e comentário inline", () => {
+    expect(parseEnv("TIMEZONE=America/Sao_Paulo  # fuso\n# c\nA='x y'\n").TIMEZONE).toBe("America/Sao_Paulo");
+    expect(parseEnv("A='x y'").A).toBe("x y");
+  });
+});
