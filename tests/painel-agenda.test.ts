@@ -41,6 +41,28 @@ describe("dia da agenda no fuso da clínica", () => {
     const j = janelaDia("2026-03-29", "Europe/Lisbon"); // adianta 1h às 01:00 UTC
     expect(j).toEqual({ de: "2026-03-29T00:00:00.000Z", ate: "2026-03-29T23:00:00.000Z" });
   });
+  it("meia-noite que não existe (horário de verão à 00:00) começa no fim da lacuna", () => {
+    // Brasil, 04/11/2018: 00:00 virou 01:00 (UTC-3 -> UTC-2)
+    expect(janelaDia("2018-11-04", "America/Sao_Paulo")).toEqual({
+      de: "2018-11-04T03:00:00.000Z",
+      ate: "2018-11-05T02:00:00.000Z",
+    });
+    // o dia anterior termina exatamente onde este começa: sem sobreposição nem buraco
+    expect(janelaDia("2018-11-03", "America/Sao_Paulo").ate).toBe("2018-11-04T03:00:00.000Z");
+  });
+  it("fim do horário de verão à 00:00 (dia com 25h)", () => {
+    // Brasil, 18/02/2018: 00:00 voltou para 23:00 de 17/02 (UTC-2 -> UTC-3)
+    expect(janelaDia("2018-02-17", "America/Sao_Paulo")).toEqual({
+      de: "2018-02-17T02:00:00.000Z",
+      ate: "2018-02-18T03:00:00.000Z",
+    });
+    expect(janelaDia("2018-02-18", "America/Sao_Paulo").de).toBe("2018-02-18T03:00:00.000Z");
+  });
+  it("fuso com meia hora (Índia) e fuso a leste do UTC+12", () => {
+    expect(janelaDia("2026-06-04", "Asia/Kolkata").de).toBe("2026-06-03T18:30:00.000Z");
+    expect(janelaDia("2026-06-04", "Pacific/Kiritimati").de).toBe("2026-06-03T10:00:00.000Z");
+    expect(janelaDia("2026-06-04", "Pacific/Pago_Pago").de).toBe("2026-06-04T11:00:00.000Z");
+  });
   it("addDiasISO anda no calendário sem depender do navegador", () => {
     expect(addDiasISO("2026-02-28", 1)).toBe("2026-03-01");
     expect(addDiasISO("2026-01-01", -1)).toBe("2025-12-31");
@@ -94,9 +116,11 @@ describe("resposta atrasada não sobrescreve a mais nova", () => {
       expect(app).toContain(`const token = seq${nome}.nova();`);
       expect(app).toContain(`if (!seq${nome}.atual(token)) return;`);
     }
-    // agenda e espera têm dois awaits (cache de procedimentos + consulta)
-    expect((app.match(/if \(!seqAgenda\.atual\(token\)\) return;/g) ?? []).length).toBeGreaterThanOrEqual(2);
-    expect((app.match(/if \(!seqEspera\.atual\(token\)\) return;/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    // agenda e espera têm dois awaits: o cache de procedimentos (compartilhado) também confere o token
+    expect(app).toContain("if (!(await loadProcedimentosCache(seqAgenda, token))) return;");
+    expect(app).toContain("if (!(await loadProcedimentosCache(seqEspera, token))) return;");
+    expect(app).toMatch(/if \(!seq\.atual\(token\)\) return false;/);
+    expect(app).not.toContain("await loadProcedimentosCache();");
   });
 });
 

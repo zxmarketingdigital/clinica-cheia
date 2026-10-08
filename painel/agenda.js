@@ -45,23 +45,30 @@ export function addDiasISO(iso, n) {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-/** Deslocamento (ms) do fuso em relação ao UTC num instante. @param {Date} d @param {string} fuso */
-function offsetDoFuso(d, fuso) {
-  const nome = new Intl.DateTimeFormat("en-US", { timeZone: fuso, timeZoneName: "shortOffset" })
-    .formatToParts(d).find((p) => p.type === "timeZoneName")?.value ?? "GMT";
-  const m = nome.match(/^(?:GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?$/);
-  if (!m) return 0;
-  const minutos = Number(m[2]) * 60 + Number(m[3] ?? "0");
-  return (m[1] === "+" ? 1 : -1) * minutos * 60 * 1000;
-}
-
-/** Meia-noite local de "YYYY-MM-DD" no fuso, como instante. */
+/**
+ * Primeiro instante em que o relógio da clínica marca o dia `iso` (meia-noite local, ou o fim da
+ * lacuna quando o horário de verão pula a meia-noite). Varre de hora em hora e refina por
+ * bisseção, então não depende de contas de deslocamento nas bordas de transição.
+ */
 function meiaNoiteLocal(iso, fuso) {
+  const H = 3600000;
   const [y, m, d] = iso.split("-").map(Number);
-  const relogio = Date.UTC(y, m - 1, d, 0, 0, 0, 0);
-  let utc = relogio - offsetDoFuso(new Date(relogio), fuso);
-  utc = relogio - offsetDoFuso(new Date(utc), fuso);   // 2ª passada: virada de horário de verão
-  return new Date(utc);
+  const base = Date.UTC(y, m - 1, d);
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: fuso, year: "numeric", month: "2-digit", day: "2-digit" });
+  const dia = (t) => {
+    const p = fmt.formatToParts(new Date(t));
+    const g = (tipo) => p.find((x) => x.type === tipo)?.value ?? "";
+    return `${g("year")}-${g("month")}-${g("day")}`;
+  };
+  // fusos vão de UTC-12 a UTC+14: 15h antes de 00:00Z o relógio local certamente ainda está no dia anterior
+  let hi = base - 15 * H;
+  for (let i = 0; i < 48 && dia(hi) < iso; i++) hi += H;
+  let lo = hi - H;
+  while (hi - lo > 1) {
+    const meio = Math.floor((lo + hi) / 2);
+    if (dia(meio) < iso) lo = meio; else hi = meio;
+  }
+  return new Date(hi);
 }
 
 /**

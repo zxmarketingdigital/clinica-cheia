@@ -189,12 +189,14 @@ function renderTab(tab) {
 }
 
 // ─── Procedimentos cache ──────────────────────────────────────────────────────
-async function loadProcedimentosCache() {
+async function loadProcedimentosCache(seq, token) {
   const { data } = await sb.from('procedimentos').select('id,nome');
+  if (!seq.atual(token)) return false;   // resposta obsoleta não toca o cache compartilhado
   if (data) {
     procedimentosCache = {};
     data.forEach(p => { procedimentosCache[p.id] = p.nome; });
   }
+  return true;
 }
 
 // ─── AGENDA DO DIA ────────────────────────────────────────────────────────────
@@ -209,8 +211,7 @@ async function renderAgenda() {
   const list = document.getElementById('agenda-list');
   list.innerHTML = loadingHtml();
 
-  await loadProcedimentosCache();
-  if (!seqAgenda.atual(token)) return;
+  if (!(await loadProcedimentosCache(seqAgenda, token))) return;
 
   // dia da agenda = [00:00, 24:00) no fuso da clínica, convertido para UTC
   const { de, ate } = janelaDia(dia, TZ);
@@ -521,8 +522,7 @@ async function renderEspera() {
   const list = document.getElementById('espera-list');
   list.innerHTML = loadingHtml();
 
-  await loadProcedimentosCache();
-  if (!seqEspera.atual(token)) return;
+  if (!(await loadProcedimentosCache(seqEspera, token))) return;
 
   const { data, error } = await sb
     .from('lista_espera')
