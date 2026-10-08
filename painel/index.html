@@ -12,10 +12,15 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --amber:        #D97706;
-      --amber-light:  #F59E0B;
-      --amber-bright: #FCD34D;
-      --amber-dark:   #92400E;
+      /* Marca do aluno: painel/marca-boot.js sobrescreve estes valores em runtime
+         a partir de painel/config.js (COR_PRIMARIA, COR_SECUNDARIA, LOGO).
+         Os valores abaixo são o fallback ZX (âmbar), usados só sem config de marca. */
+      --brand:        #D97706;
+      --brand-2:      #F59E0B;
+      --brand-rgb:    217 119 6;
+      --brand-text:   #D97706;
+      --brand-2-text: #F59E0B;
+      --brand-on:     #000000;
       --bg:           #0D0D0D;
       --bg-alt:       #0A0A0A;
       --surface:      #1A1A1A;
@@ -39,15 +44,15 @@
       line-height: 1.6;
     }
 
-    /* subtle amber grid */
+    /* subtle brand grid */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
       pointer-events: none;
       background-image:
-        linear-gradient(rgba(217,119,6,0.025) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(217,119,6,0.025) 1px, transparent 1px);
+        linear-gradient(rgb(var(--brand-rgb) / 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(var(--brand-rgb) / 0.025) 1px, transparent 1px);
       background-size: 60px 60px;
       z-index: 0;
     }
@@ -71,18 +76,22 @@
       padding: 48px 40px;
       width: 100%;
       max-width: 420px;
-      box-shadow: 0 0 60px rgba(217,119,6,0.08);
+      box-shadow: 0 0 60px rgb(var(--brand-rgb) / 0.08);
     }
 
     .login-logo {
       font-family: 'JetBrains Mono', monospace;
       font-size: 1.1rem;
       font-weight: 700;
-      color: var(--amber);
+      color: var(--brand-text);
       letter-spacing: 0.1em;
       text-transform: uppercase;
       margin-bottom: 8px;
     }
+
+    .brand-logo { display: block; max-width: 100%; object-fit: contain; }
+    .login-logo .brand-logo { max-height: 56px; margin-bottom: 4px; }
+    .header-brand .brand-logo { max-height: 32px; }
 
     .login-card h1 {
       font-size: 1.6rem;
@@ -121,8 +130,8 @@
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .field input:focus, .field select:focus {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 2px rgba(217,119,6,0.15);
+      border-color: var(--brand-text);
+      box-shadow: 0 0 0 2px rgb(var(--brand-rgb) / 0.15);
     }
     .field input::placeholder { color: var(--text-muted); }
 
@@ -142,7 +151,7 @@
       transition: opacity 0.15s, transform 0.15s;
     }
     .btn:focus-visible {
-      outline: 2px solid var(--amber);
+      outline: 2px solid var(--brand);
       outline-offset: 2px;
     }
     .btn:hover { transform: translateY(-1px); }
@@ -150,8 +159,8 @@
     .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--amber), var(--amber-light));
-      color: #000;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: var(--brand-on);
       font-weight: 800;
     }
     .btn-primary.full { width: 100%; padding: 14px 18px; font-size: 0.95rem; }
@@ -161,18 +170,18 @@
       border: 1px solid var(--border-light);
       color: var(--text-sec);
     }
-    .btn-ghost:hover { border-color: var(--amber); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--brand-text); color: var(--text); }
 
     .btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; }
 
     /* status action buttons */
     .btn-confirmado { background: rgba(74,222,128,0.15); border: 1px solid rgba(74,222,128,0.3); color: var(--green); }
-    .btn-realizado  { background: rgba(217,119,6,0.15);  border: 1px solid rgba(217,119,6,0.3);  color: var(--amber-light); }
+    .btn-realizado  { background: rgb(var(--brand-rgb) / 0.15);  border: 1px solid rgb(var(--brand-rgb) / 0.3);  color: var(--brand-2-text); }
     .btn-faltou     { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.3);  color: var(--red); }
     .btn-cancelar   { background: rgba(107,114,128,0.15);border: 1px solid var(--border-light);  color: var(--text-muted); }
 
     .btn-confirmado:hover { background: rgba(74,222,128,0.25); }
-    .btn-realizado:hover  { background: rgba(217,119,6,0.25); }
+    .btn-realizado:hover  { background: rgb(var(--brand-rgb) / 0.25); }
     .btn-faltou:hover     { background: rgba(239,68,68,0.22); }
     .btn-cancelar:hover   { background: rgba(107,114,128,0.25); color: var(--text-sec); }
 
@@ -197,15 +206,9 @@
       font-family: 'JetBrains Mono', monospace;
       font-weight: 700;
       font-size: 0.88rem;
-      color: var(--amber);
+      color: var(--brand-text);
       letter-spacing: 0.08em;
       text-transform: uppercase;
-    }
-
-    .header-clinica {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      margin-left: 12px;
     }
 
     .header-left { display: flex; align-items: center; gap: 0; }
@@ -242,11 +245,11 @@
     }
     .tab:hover { color: var(--text); }
     .tab.active {
-      color: var(--amber);
-      border-bottom-color: var(--amber);
+      color: var(--brand-text);
+      border-bottom-color: var(--brand-text);
     }
     .tab:focus-visible {
-      outline: 2px solid var(--amber);
+      outline: 2px solid var(--brand);
       outline-offset: -2px;
     }
 
@@ -309,9 +312,9 @@
       transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
     }
     .card:hover {
-      border-color: rgba(217,119,6,0.3);
+      border-color: rgb(var(--brand-rgb) / 0.3);
       transform: translateY(-2px);
-      box-shadow: 0 6px 24px rgba(217,119,6,0.08);
+      box-shadow: 0 6px 24px rgb(var(--brand-rgb) / 0.08);
     }
 
     /* Agenda row */
@@ -326,7 +329,7 @@
       font-family: 'JetBrains Mono', monospace;
       font-size: 1rem;
       font-weight: 700;
-      color: var(--amber);
+      color: var(--brand-text);
       min-width: 54px;
     }
 
@@ -352,7 +355,7 @@
     }
     .badge-agendado   { background: rgba(129,140,248,0.15); color: var(--indigo); border: 1px solid rgba(129,140,248,0.3); }
     .badge-confirmado { background: rgba(74,222,128,0.12);  color: var(--green);  border: 1px solid rgba(74,222,128,0.3); }
-    .badge-realizado  { background: rgba(217,119,6,0.12);   color: var(--amber-light); border: 1px solid rgba(217,119,6,0.3); }
+    .badge-realizado  { background: rgb(var(--brand-rgb) / 0.12);   color: var(--brand-2-text); border: 1px solid rgb(var(--brand-rgb) / 0.3); }
     .badge-cancelado  { background: rgba(107,114,128,0.12); color: var(--text-muted); border: 1px solid var(--border); }
     .badge-faltou     { background: rgba(239,68,68,0.12);   color: var(--red);    border: 1px solid rgba(239,68,68,0.3); }
 
@@ -371,8 +374,8 @@
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .search-wrap input:focus {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 2px rgba(217,119,6,0.15);
+      border-color: var(--brand-text);
+      box-shadow: 0 0 0 2px rgb(var(--brand-rgb) / 0.15);
     }
     .search-wrap input::placeholder { color: var(--text-muted); }
 
@@ -390,7 +393,7 @@
       flex-wrap: wrap;
       transition: border-color 0.2s;
     }
-    .list-item:hover { border-color: rgba(217,119,6,0.3); }
+    .list-item:hover { border-color: rgb(var(--brand-rgb) / 0.3); }
 
     .list-item-title { font-weight: 700; color: var(--text); font-size: 0.92rem; }
     .list-item-sub   { font-size: 0.8rem; color: var(--text-sec); margin-top: 2px; }
@@ -412,8 +415,8 @@
       outline: none;
     }
     .inline-edit input[type="number"]:focus {
-      border-color: var(--amber);
-      box-shadow: 0 0 0 2px rgba(217,119,6,0.15);
+      border-color: var(--brand-text);
+      box-shadow: 0 0 0 2px rgb(var(--brand-rgb) / 0.15);
     }
     .inline-edit label { font-size: 0.78rem; color: var(--text-muted); }
 
@@ -451,7 +454,7 @@
       display: inline-block;
       width: 18px; height: 18px;
       border: 2px solid var(--border-light);
-      border-top-color: var(--amber);
+      border-top-color: var(--brand-text);
       border-radius: 50%;
       animation: spin 0.7s linear infinite;
       vertical-align: middle;
@@ -487,7 +490,7 @@
       padding: 36px 32px;
       width: 100%;
       max-width: 440px;
-      box-shadow: 0 0 80px rgba(217,119,6,0.15);
+      box-shadow: 0 0 80px rgb(var(--brand-rgb) / 0.15);
     }
 
     .modal h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 20px; color: var(--text); }
@@ -513,7 +516,7 @@
   <!-- Login screen -->
   <div id="login-screen">
     <div class="login-card">
-      <div class="login-logo">Clínica Cheia</div>
+      <div class="login-logo" id="brand-login">Clínica Cheia</div>
       <h1>Painel da Clínica</h1>
       <p>Acesse com seu e-mail e senha para gerenciar a agenda.</p>
       <form id="login-form">
@@ -535,8 +538,7 @@
   <div id="main-screen">
     <header>
       <div class="header-left">
-        <span class="header-brand">Clínica Cheia</span>
-        <span class="header-clinica" id="header-clinica-nome"></span>
+        <span class="header-brand" id="brand-header">Clínica Cheia</span>
       </div>
       <div class="header-right">
         <span class="user-email" id="header-email"></span>
@@ -637,6 +639,7 @@
 <div id="toast" role="alert" aria-live="assertive"></div>
 
 <script src="config.js"></script>
+<script type="module" src="marca-boot.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>

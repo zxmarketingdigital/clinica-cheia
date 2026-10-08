@@ -15,9 +15,17 @@
  */
 
 import { createInterface } from "readline/promises";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
-import { resolve, dirname } from "path";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "fs";
+import { resolve, dirname, join } from "path";
+import { homedir } from "os";
 import { fileURLToPath } from "url";
+import {
+  COR_PADRAO,
+  AVISO_COR_PADRAO,
+  validarNome,
+  validarCor,
+  validarLogo,
+} from "./lib/marca-setup.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
@@ -61,7 +69,8 @@ function serializarEnv(config, ordem) {
   for (const { key, comment } of ordem) {
     if (comment) linhas.push(`# ${comment}`);
     const valor = config[key] ?? "";
-    linhas.push(`${key}=${valor}`);
+    // Valor com '#' (ex: cor hex) vai entre aspas: sem elas, lerEnv e dotenv leriam o '#' como comentário.
+    linhas.push(valor.includes("#") && !valor.includes('"') ? `${key}="${valor}"` : `${key}=${valor}`);
   }
   linhas.push("");
   return linhas.join("\n");
@@ -76,15 +85,21 @@ function serializarEnv(config, ordem) {
  * @param {string} supabaseUrl
  * @param {string} supabaseAnonKey
  * @param {string} clinicaNome
+ * @param {{ corPrimaria?: string; corSecundaria?: string; logo?: string }} [marca]
+ *   marca do aluno: cores em hex e logo (arquivo dentro de painel/ ou URL https)
  * @returns {string}
  */
-function gerarConfigPainel(supabaseUrl, supabaseAnonKey, clinicaNome) {
+function gerarConfigPainel(supabaseUrl, supabaseAnonKey, clinicaNome, marca = {}) {
   return `// Gerado por setup/configure.mjs — NÃO commitar este arquivo.
 // Contém credenciais públicas (anon key) do projeto Supabase da clínica.
 window.CLINICA_CONFIG = {
   SUPABASE_URL: ${JSON.stringify(supabaseUrl)},
   SUPABASE_ANON_KEY: ${JSON.stringify(supabaseAnonKey)},
   CLINICA_NOME: ${JSON.stringify(clinicaNome)},
+  // Marca da clínica (o painel aplica em runtime). Troque aqui quando quiser.
+  COR_PRIMARIA: ${JSON.stringify(marca.corPrimaria || COR_PADRAO)},
+  COR_SECUNDARIA: ${JSON.stringify(marca.corSecundaria || "")},   // vazio = derivada da primária
+  LOGO: ${JSON.stringify(marca.logo || "")},   // arquivo dentro de painel/ ou URL https; vazio = só o nome
 };
 `;
 }
@@ -93,14 +108,50 @@ window.CLINICA_CONFIG = {
 // Wizard
 // ---------------------------------------------------------------------------
 
-/** @typedef {{ key: string; label: string; hint: string; comment?: string; defaultValue?: string }} Campo */
+/**
+ * @typedef {{ ok: true; valor: string } | { ok: false; erro: string }} Validacao
+ * @typedef {{ key: string; label: string; hint: string; comment?: string; defaultValue?: string; validar?: (valor: string) => Validacao }} Campo
+ */
+
+/** Dependências de disco do validador de logo (a pasta painel/ é o destino da cópia). */
+const DEPS_LOGO = {
+  painelDir: resolve(ROOT, "painel"),
+  home: homedir(),
+  existe: existsSync,
+  copiar: copyFileSync,
+  juntar: join,
+  resolver: resolve,
+};
 
 /** @type {Campo[]} */
 const CAMPOS_ENV = [
   {
     key: "CLINICA_NOME",
     label: "Nome da clínica",
-    hint: "Ex: Clínica Bella — aparece nas mensagens e no painel.",
+    hint: "Ex: Clínica Bella — aparece nas mensagens e no painel. Obrigatório.",
+    validar: validarNome,
+  },
+  {
+    key: "COR_PRIMARIA",
+    label: "Cor primária da marca (hex)",
+    hint: "Ex: #0F766E — botões, abas e destaques do painel. Enter usa o padrão ZX (âmbar).",
+    comment: "Cor primária da marca da clínica (hex #RRGGBB)",
+    defaultValue: COR_PADRAO,
+    validar: (v) => validarCor(v, { obrigatoria: true }),
+  },
+  {
+    key: "COR_SECUNDARIA",
+    label: "Cor secundária (hex) — opcional",
+    hint: "Ex: #115E59. Enter deriva da cor primária.",
+    comment: "Cor secundária (opcional; vazio = derivada da primária)",
+    validar: (v) => validarCor(v),
+  },
+  {
+    key: "LOGO",
+    label: "Logo da clínica — opcional",
+    hint: "Caminho de um arquivo (png, jpg, svg, webp) ou URL https. Enter = sem logo, aparece só o nome.",
+    comment: "Logo: arquivo copiado para painel/ ou URL https (vazio = só o nome)",
+    validar: (v) => validarLogo(v, DEPS_LOGO),
   },
   {
     key: "TIMEZONE",
@@ -181,10 +232,15 @@ async function perguntar(rl, campo, valorAtual) {
     : campo.defaultValue
     ? ` [padrão: ${campo.defaultValue}]`
     : "";
-  const resposta = await rl.question(`  ${campo.label}${padrao}\n  (${campo.hint})\n  > `);
-  const limpa = resposta.trim();
-  if (limpa === "" && valorAtual) return valorAtual;
-  return limpa || campo.defaultValue || "";
+  for (;;) {
+    const resposta = await rl.question(`  ${campo.label}${padrao}\n  (${campo.hint})\n  > `);
+    const limpa = resposta.trim();
+    const escolhido = limpa === "" && valorAtual ? valorAtual : limpa || campo.defaultValue || "";
+    if (!campo.validar) return escolhido;
+    const r = campo.validar(escolhido);
+    if (r.ok) return r.valor;
+    console.log(`  ⚠️  ${r.erro}\n`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -269,6 +325,9 @@ async function main() {
 
   for (const campo of CAMPOS_ENV) {
     config[campo.key] = await perguntar(rl, campo, atual[campo.key]);
+    if (campo.key === "COR_PRIMARIA" && config[campo.key] === COR_PADRAO) {
+      console.log(`  ⚠️  ${AVISO_COR_PADRAO}`);
+    }
     console.log();
   }
 
@@ -300,7 +359,12 @@ async function main() {
   const painelContent = gerarConfigPainel(
     config["SUPABASE_URL"] ?? "",
     config["SUPABASE_ANON_KEY"] ?? "",
-    config["CLINICA_NOME"] ?? ""
+    config["CLINICA_NOME"] ?? "",
+    {
+      corPrimaria: config["COR_PRIMARIA"],
+      corSecundaria: config["COR_SECUNDARIA"],
+      logo: config["LOGO"],
+    }
   );
   writeFileSync(painelConfigPath, painelContent, "utf8");
   console.log(`✅  painel/config.js gravado em ${painelConfigPath}`);

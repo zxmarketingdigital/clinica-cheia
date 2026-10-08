@@ -29,6 +29,7 @@
 | O aluno pede | Onde se resolve |
 |---|---|
 | Nome da clínica, credenciais, link de avaliação | `.env` / `painel/config.js` — **config** |
+| **Marca da clínica** (cor primária/secundária e logo do painel) | `COR_PRIMARIA`, `COR_SECUNDARIA`, `LOGO` em `painel/config.js` — **config**, sem tocar em código (o painel aplica em runtime) |
 | Procedimentos, duração, preço, cadência de retorno | **banco** (tabela `procedimentos`) ou `src/niche/clinica-estetica.ts` para os defaults do seed |
 | Moeda / formato de valor (€, US$) | `painel/app.js` — a formatação é `toLocaleString('pt-BR', { currency: 'BRL' })`. **Fora de `src/`** |
 | Textos e tom das mensagens dos agentes | prompts em `src/` |
@@ -94,7 +95,10 @@ Pergunte e vá anotando. Para cada uma, explique onde encontrar:
 
 | Credencial | Onde o aluno pega |
 |---|---|
-| `CLINICA_NOME` | Nome da clínica do cliente |
+| `CLINICA_NOME` | Nome da clínica do cliente (obrigatório) — vira a marca no painel |
+| `COR_PRIMARIA` | Cor da marca da clínica em hex (`#RRGGBB`; `#RGB` também vale). **Pergunte logo depois do nome.** Sem resposta, o padrão é `#D97706` (âmbar ZX) e você **avisa o aluno**: "Usando a cor padrão ZX (âmbar). Troque depois em `painel/config.js`." Cor inválida: pergunte de novo |
+| `COR_SECUNDARIA` (opcional) | Hex. Em branco, o painel deriva da primária |
+| `LOGO` (opcional) | Arquivo de imagem (png, jpg, svg, webp) que você copia para `painel/logo.<ext>` e referencia como `"logo.png"`, ou uma URL `https://`. Em branco, o painel mostra só o nome — nunca o logo da ZX |
 | `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` + `SUPABASE_ANON_KEY` | Supabase → Project Settings → API (a **service key** é secreta; a **anon key** vai pro painel) |
 | `GEMINI_API_KEY` | Google AI Studio → Get API key (tem free tier) |
 | `WHATSAPP_PROVIDER` + token | Recomende **uazapi**: `UAZAPI_URL` + `UAZAPI_TOKEN` do painel uazapi. (zapi/meta são opções) |
@@ -106,7 +110,8 @@ Gere você mesmo um **`WEBHOOK_SECRET`** forte (string aleatória) — guarde, v
 Com as respostas, escreva **dois** arquivos (não comite — estão no `.gitignore`):
 - `.env` — a partir de `.env.example`, preenchendo todas as chaves coletadas + o `WEBHOOK_SECRET`.
 - `painel/config.js` — a partir de `painel/config.example.js`, com `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-  (a **anon**, nunca a service) e `CLINICA_NOME`.
+  (a **anon**, nunca a service), `CLINICA_NOME` e a marca (`COR_PRIMARIA`, `COR_SECUNDARIA`, `LOGO`).
+  A marca é só config: o painel lê esses campos e aplica cor e logo sozinho (CSS `--brand`).
 
 > Alternativa: existe um wizard de terminal equivalente (`node setup/configure.mjs`) para quem preferir
 > um fluxo scriptado. Mas você pode fazer tudo isso aqui no chat — é o jeito ZX Control.

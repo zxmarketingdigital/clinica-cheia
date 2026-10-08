@@ -119,8 +119,6 @@ function showApp(user) {
   const ms = document.getElementById('main-screen');
   ms.classList.add('visible');
   document.getElementById('header-email').textContent = user.email ?? '';
-  document.getElementById('header-clinica-nome').textContent =
-    cfg.CLINICA_NOME ? `— ${cfg.CLINICA_NOME}` : '';
   renderTab(currentTab);
 }
 
@@ -568,7 +566,7 @@ async function renderMensagens() {
   }
 
   list.innerHTML = data.map(m => {
-    const dirColor = m.direcao === 'out' ? 'var(--amber-light)' : 'var(--indigo)';
+    const dirColor = m.direcao === 'out' ? 'var(--brand-2-text)' : 'var(--indigo)';
     const dirLabel = m.direcao === 'out' ? '↑ Enviada' : '↓ Recebida';
     return `
       <div class="list-item">

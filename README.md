@@ -28,7 +28,8 @@ Depois é só dizer ao Claude:
 
 > **"Configura o Clínica Cheia pra minha clínica."**
 
-O Claude vai pedir as credenciais (Supabase, Gemini, WhatsApp, link do Google) uma a uma, preencher
+O Claude vai pedir o nome, a cor e o logo da clínica (a marca do painel é a do seu cliente, não a nossa)
+e as credenciais (Supabase, Gemini, WhatsApp, link do Google) uma a uma, preencher
 tudo, aplicar o banco, fazer o deploy e validar com um teste. As instruções que ele segue estão em
 [`CLAUDE.md`](./CLAUDE.md).
 
