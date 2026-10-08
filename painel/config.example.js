@@ -4,6 +4,7 @@ window.CLINICA_CONFIG = {
   SUPABASE_URL: "",
   SUPABASE_ANON_KEY: "",
   CLINICA_NOME: "",
+  TIMEZONE: "America/Sao_Paulo",   // fuso IANA da clínica (ex: Europe/Lisbon): define o "dia" da agenda e as horas exibidas
   // Marca da clínica — o painel aplica cor e logo em runtime.
   COR_PRIMARIA: "#D97706",   // hex #RRGGBB. Este é o padrão ZX (âmbar): troque pela cor da clínica.
   COR_SECUNDARIA: "",        // opcional; vazio = derivada da primária

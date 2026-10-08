@@ -33,7 +33,7 @@
 | Procedimentos, duração, preço, cadência de retorno | **banco** (tabela `procedimentos`) ou `src/niche/clinica-estetica.ts` para os defaults do seed |
 | Moeda / formato de valor (€, US$) | `painel/app.js` — a formatação é `toLocaleString('pt-BR', { currency: 'BRL' })`. **Fora de `src/`** |
 | Textos e tom das mensagens dos agentes | prompts em `src/` |
-| Fuso horário (clínica fora do Brasil) | `TIMEZONE` no `.env` — **leia abaixo antes** |
+| Fuso horário (clínica fora do Brasil) | `TIMEZONE` no `.env` **e** em `painel/config.js` — **leia abaixo antes** |
 
 ### 🌍 Trocar o fuso horário (a partir da v1.0.3: é só uma variável)
 
@@ -42,6 +42,8 @@ identificador IANA real (ex: `Europe/Lisbon`) no `parseConfig`, e o offset UTC (
 calculado dinamicamente via `Intl`, não hardcoded. Pra atender um cliente fora do Brasil:
 
 1. Adicione/edite `TIMEZONE=Europe/Lisbon` (ou o fuso do cliente) no `.env`.
+   Coloque o **mesmo fuso** em `TIMEZONE` no `painel/config.js` (o wizard já grava os dois): é ele que define
+   o "dia" da agenda e as horas exibidas no painel. Sem a chave, o painel usa `America/Sao_Paulo`.
 2. Rode `pnpm test` — os testes de fuso continuam verdes porque a suíte testa o comportamento
    PARAMETRIZADO por `TIMEZONE`, não mais um valor fixo de Brasília.
 3. Não precisa tocar em `src/lib/tempo.ts` nem em `src/index.ts` — é só config.

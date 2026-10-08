@@ -72,7 +72,7 @@ function serializarEnv(config, ordem) {
  * @param {string} supabaseUrl
  * @param {string} supabaseAnonKey
  * @param {string} clinicaNome
- * @param {{ corPrimaria?: string; corSecundaria?: string; logo?: string }} [marca]
+ * @param {{ corPrimaria?: string; corSecundaria?: string; logo?: string; timezone?: string }} [marca]
  *   marca do aluno: cores em hex e logo (arquivo dentro de painel/ ou URL https)
  * @returns {string}
  */
@@ -83,6 +83,7 @@ window.CLINICA_CONFIG = {
   SUPABASE_URL: ${JSON.stringify(supabaseUrl)},
   SUPABASE_ANON_KEY: ${JSON.stringify(supabaseAnonKey)},
   CLINICA_NOME: ${JSON.stringify(clinicaNome)},
+  TIMEZONE: ${JSON.stringify(marca.timezone || "America/Sao_Paulo")},   // fuso IANA da clínica: define o "dia" da agenda do painel
   // Marca da clínica (o painel aplica em runtime). Troque aqui quando quiser.
   COR_PRIMARIA: ${JSON.stringify(marca.corPrimaria || COR_PADRAO)},
   COR_SECUNDARIA: ${JSON.stringify(marca.corSecundaria || "")},   // vazio = derivada da primária
@@ -376,6 +377,7 @@ async function main() {
       corPrimaria: config["COR_PRIMARIA"],
       corSecundaria: config["COR_SECUNDARIA"],
       logo: config["LOGO"],
+      timezone: config["TIMEZONE"],
     }
   );
   gravarAtomico(painelConfigPath, (tmp) => writeFileSync(tmp, painelContent, "utf8"));

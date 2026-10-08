@@ -2,6 +2,10 @@
 // Vanilla JS + supabase-js@2 via ESM CDN. Sem framework.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import {
+  resolverFuso, hojeISO, addDiasISO, janelaDia, fmtHora, fmtDataHora, rotuloDia,
+  criarSequencia, atualizarStatusAgendamento, atualizarProcedimento,
+} from './agenda.js';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 const cfg = window.CLINICA_CONFIG ?? {};
@@ -18,38 +22,43 @@ if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) {
 
 const sb = createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
 
+// Fuso da clínica (TIMEZONE do painel/config.js; vazio ou inválido = America/Sao_Paulo).
+// O dia da agenda e as horas exibidas seguem ele, não o UTC nem o relógio do navegador.
+const TZ = resolverFuso(cfg.TIMEZONE);
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentTab = 'agenda';
-let agendaDate = todayISO();      // "YYYY-MM-DD"
+let agendaDate = hojeISO(TZ);      // "YYYY-MM-DD"
 let clientesBusca = '';
 let allClientes = [];             // cache para busca offline
 let procedimentosCache = {};      // { [id]: nome }
 
+// Uma sequência por tela: resposta de requisição antiga não sobrescreve a mais nova.
+const seqAgenda = criarSequencia();
+const seqClientes = criarSequencia();
+const seqProcedimentos = criarSequencia();
+const seqEspera = criarSequencia();
+const seqMensagens = criarSequencia();
+
 // ─── Utils ────────────────────────────────────────────────────────────────────
 function todayISO() {
-  return new Date().toLocaleDateString('sv');   // "YYYY-MM-DD" via sv-SE locale
+  return hojeISO(TZ);   // "YYYY-MM-DD" no fuso da clínica
 }
 
 function fmtDate(isoDate) {
-  const [y, m, d] = isoDate.split('-');
-  const hoje = todayISO();
-  if (isoDate === hoje) return 'Hoje';
-  const dt = new Date(isoDate + 'T00:00:00');
-  return dt.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  return rotuloDia(isoDate, TZ);
 }
 
 function fmtTime(ts) {
-  return new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return fmtHora(ts, TZ);
 }
 
 function fmtDatetime(ts) {
-  return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return fmtDataHora(ts, TZ);
 }
 
 function addDays(isoDate, n) {
-  const d = new Date(isoDate + 'T00:00:00');
-  d.setDate(d.getDate() + n);
-  return d.toLocaleDateString('sv');
+  return addDiasISO(isoDate, n);
 }
 
 function escHtml(str) {
@@ -194,22 +203,26 @@ function renderAgendaDateLabel() {
 }
 
 async function renderAgenda() {
+  const token = seqAgenda.nova();
+  const dia = agendaDate;   // o clique seguinte pode mudar agendaDate durante os awaits
   renderAgendaDateLabel();
   const list = document.getElementById('agenda-list');
   list.innerHTML = loadingHtml();
 
   await loadProcedimentosCache();
+  if (!seqAgenda.atual(token)) return;
 
-  // fetch agendamentos do dia com dados do cliente
-  const start = agendaDate + 'T00:00:00';
-  const end   = agendaDate + 'T23:59:59';
+  // dia da agenda = [00:00, 24:00) no fuso da clínica, convertido para UTC
+  const { de, ate } = janelaDia(dia, TZ);
 
   const { data, error } = await sb
     .from('agendamentos')
     .select('id, inicio, status, cliente_id, procedimento_id, clientes(nome, telefone)')
-    .gte('inicio', start)
-    .lte('inicio', end)
+    .gte('inicio', de)
+    .lt('inicio', ate)
     .order('inicio', { ascending: true });
+
+  if (!seqAgenda.atual(token)) return;   // chegou depois de uma consulta mais nova
 
   if (error) {
     list.innerHTML = `<div class="empty" style="color:var(--red)">Erro ao carregar: ${escHtml(error.message)}</div>`;
@@ -228,7 +241,7 @@ async function renderAgenda() {
 
   // attach action buttons
   list.querySelectorAll('[data-action]').forEach(btn => {
-    btn.addEventListener('click', () => handleAgendaAction(btn.dataset.id, btn.dataset.action));
+    btn.addEventListener('click', () => handleAgendaAction(btn.dataset.id, btn.dataset.action, btn.dataset.status));
   });
 }
 
@@ -242,10 +255,10 @@ function agendaCardHtml(ag) {
   const actionButtons = isTerminal
     ? `<span style="font-size:0.78rem;color:var(--text-muted);font-style:italic;">Finalizado</span>`
     : `
-      ${ag.status !== 'confirmado' ? `<button class="btn btn-sm btn-confirmado" data-id="${ag.id}" data-action="confirmado" aria-label="Marcar como confirmado">Confirmado</button>` : ''}
-      <button class="btn btn-sm btn-realizado"  data-id="${ag.id}" data-action="realizado"  aria-label="Marcar como realizado">Realizado</button>
-      <button class="btn btn-sm btn-faltou"     data-id="${ag.id}" data-action="faltou"     aria-label="Marcar como faltou">Faltou</button>
-      <button class="btn btn-sm btn-cancelar"   data-id="${ag.id}" data-action="cancelado"  aria-label="Cancelar agendamento">Cancelar</button>
+      ${ag.status !== 'confirmado' ? `<button class="btn btn-sm btn-confirmado" data-id="${ag.id}" data-status="${escHtml(ag.status)}" data-action="confirmado" aria-label="Marcar como confirmado">Confirmado</button>` : ''}
+      <button class="btn btn-sm btn-realizado"  data-id="${ag.id}" data-status="${escHtml(ag.status)}" data-action="realizado"  aria-label="Marcar como realizado">Realizado</button>
+      <button class="btn btn-sm btn-faltou"     data-id="${ag.id}" data-status="${escHtml(ag.status)}" data-action="faltou"     aria-label="Marcar como faltou">Faltou</button>
+      <button class="btn btn-sm btn-cancelar"   data-id="${ag.id}" data-status="${escHtml(ag.status)}" data-action="cancelado"  aria-label="Cancelar agendamento">Cancelar</button>
     `;
 
   return `
@@ -262,23 +275,23 @@ function agendaCardHtml(ag) {
     </div>`;
 }
 
-async function handleAgendaAction(id, novoStatus) {
+async function handleAgendaAction(id, novoStatus, statusAtual) {
   // Optimistic UI: disable all buttons on this card
   const card = document.getElementById(`ag-${id}`);
   if (card) {
     card.querySelectorAll('button[data-action]').forEach(b => { b.disabled = true; });
   }
 
-  const extra = novoStatus === 'confirmado' ? { confirmado_em: new Date().toISOString() } : {};
+  // só muda se o agendamento ainda estiver no status que a tela mostrou (0 linhas = falha visível)
+  const r = await atualizarStatusAgendamento(sb, { id, de: statusAtual, para: novoStatus });
 
-  const { error } = await sb
-    .from('agendamentos')
-    .update({ status: novoStatus, ...extra })
-    .eq('id', id);
-
-  if (error) {
-    toast(`Erro ao atualizar: ${error.message}`, 'error');
-    if (card) card.querySelectorAll('button[data-action]').forEach(b => { b.disabled = false; });
+  if (!r.ok) {
+    toast(r.motivo === 'erro' ? `Erro ao atualizar: ${r.mensagem}` : r.mensagem, 'error');
+    if (r.motivo === 'conflito') {
+      renderAgenda();   // a tela estava velha: recarrega o estado real
+    } else if (card) {
+      card.querySelectorAll('button[data-action]').forEach(b => { b.disabled = false; });
+    }
     return;
   }
 
@@ -302,6 +315,7 @@ document.getElementById('agenda-hoje').addEventListener('click', () => {
 
 // ─── CLIENTES ─────────────────────────────────────────────────────────────────
 async function renderClientes() {
+  const token = seqClientes.nova();
   const list = document.getElementById('clientes-list');
   list.innerHTML = loadingHtml();
 
@@ -309,6 +323,8 @@ async function renderClientes() {
     .from('clientes')
     .select('id, nome, telefone, criado_em')
     .order('nome', { ascending: true });
+
+  if (!seqClientes.atual(token)) return;
 
   if (error) {
     list.innerHTML = `<div class="empty" style="color:var(--red)">Erro: ${escHtml(error.message)}</div>`;
@@ -410,6 +426,7 @@ document.getElementById('form-cliente').addEventListener('submit', async (e) => 
 
 // ─── PROCEDIMENTOS ────────────────────────────────────────────────────────────
 async function renderProcedimentos() {
+  const token = seqProcedimentos.nova();
   const list = document.getElementById('procedimentos-list');
   list.innerHTML = loadingHtml();
 
@@ -417,6 +434,8 @@ async function renderProcedimentos() {
     .from('procedimentos')
     .select('id, nome, duracao_min, cadencia_retorno_dias, preco_centavos')
     .order('nome', { ascending: true });
+
+  if (!seqProcedimentos.atual(token)) return;
 
   if (error) {
     list.innerHTML = `<div class="empty" style="color:var(--red)">Erro: ${escHtml(error.message)}</div>`;
@@ -480,16 +499,14 @@ async function saveProcedimento(id) {
   btn.disabled = true;
   btn.textContent = '…';
 
-  const { error } = await sb
-    .from('procedimentos')
-    .update({ duracao_min, cadencia_retorno_dias })
-    .eq('id', id);
+  // 0 linhas afetadas (RLS, procedimento removido) também é falha, não "atualizado"
+  const r = await atualizarProcedimento(sb, { id, duracao_min, cadencia_retorno_dias });
 
   btn.disabled = false;
   btn.textContent = 'Salvar';
 
-  if (error) {
-    toast(`Erro: ${error.message}`, 'error');
+  if (!r.ok) {
+    toast(r.motivo === 'erro' ? `Erro: ${r.mensagem}` : r.mensagem, 'error');
     return;
   }
 
@@ -500,16 +517,20 @@ async function saveProcedimento(id) {
 
 // ─── LISTA DE ESPERA ──────────────────────────────────────────────────────────
 async function renderEspera() {
+  const token = seqEspera.nova();
   const list = document.getElementById('espera-list');
   list.innerHTML = loadingHtml();
 
   await loadProcedimentosCache();
+  if (!seqEspera.atual(token)) return;
 
   const { data, error } = await sb
     .from('lista_espera')
     .select('id, criado_em, atendido, cliente_id, procedimento_id, clientes(nome, telefone)')
     .eq('atendido', false)
     .order('criado_em', { ascending: true });
+
+  if (!seqEspera.atual(token)) return;
 
   const countEl = document.getElementById('espera-count');
 
@@ -546,6 +567,7 @@ async function renderEspera() {
 
 // ─── MENSAGENS ────────────────────────────────────────────────────────────────
 async function renderMensagens() {
+  const token = seqMensagens.nova();
   const list = document.getElementById('mensagens-list');
   list.innerHTML = loadingHtml();
 
@@ -554,6 +576,8 @@ async function renderMensagens() {
     .select('id, telefone, direcao, agente, corpo, criado_em')
     .order('criado_em', { ascending: false })
     .limit(60);
+
+  if (!seqMensagens.atual(token)) return;
 
   if (error) {
     list.innerHTML = `<div class="empty" style="color:var(--red)">Erro: ${escHtml(error.message)}</div>`;
