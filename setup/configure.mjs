@@ -15,7 +15,7 @@
  */
 
 import { createInterface } from "readline/promises";
-import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, copyFileSync, renameSync, unlinkSync } from "fs";
 import { resolve, dirname, join } from "path";
 import { homedir } from "os";
 import { fileURLToPath } from "url";
@@ -100,12 +100,30 @@ window.CLINICA_CONFIG = {
  * @typedef {{ key: string; label: string; hint: string; comment?: string; defaultValue?: string; limpavel?: boolean; validar?: (valor: string) => Validacao }} Campo
  */
 
+
+/**
+ * Escrita atômica: grava num temporário ao lado e troca por rename. O rename substitui
+ * o próprio nome do destino — se ele for um symlink, o link é trocado e o alvo (que pode
+ * estar fora da raiz) nunca é tocado; se a cópia falhar, o arquivo antigo continua intacto.
+ * @param {string} destino @param {(tmp: string) => void} gravar
+ */
+function gravarAtomico(destino, gravar) {
+  const tmp = `${destino}.tmp-${process.pid}`;
+  try {
+    gravar(tmp);
+    renameSync(tmp, destino);
+  } catch (e) {
+    try { unlinkSync(tmp); } catch { /* tmp pode nem ter sido criado */ }
+    throw e;
+  }
+}
+
 /** Dependências de disco do validador de logo (a pasta painel/ é o destino da cópia). */
 const DEPS_LOGO = {
   painelDir: resolve(ROOT, "painel"),
   home: homedir(),
   existe: existsSync,
-  copiar: copyFileSync,
+  copiar: (origem, destino) => gravarAtomico(destino, (tmp) => copyFileSync(origem, tmp)),
   juntar: join,
   resolver: resolve,
 };
@@ -342,7 +360,7 @@ async function main() {
     }
   }
 
-  writeFileSync(envPath, serializarEnv(config, ordemFinal), "utf8");
+  gravarAtomico(envPath, (tmp) => writeFileSync(tmp, serializarEnv(config, ordemFinal), "utf8"));
   console.log(`✅  .env gravado em ${envPath}`);
 
   // Gravar painel/config.js
@@ -358,7 +376,7 @@ async function main() {
       logo: config["LOGO"],
     }
   );
-  writeFileSync(painelConfigPath, painelContent, "utf8");
+  gravarAtomico(painelConfigPath, (tmp) => writeFileSync(tmp, painelContent, "utf8"));
   console.log(`✅  painel/config.js gravado em ${painelConfigPath}`);
 
   // Gerar seed.sql
